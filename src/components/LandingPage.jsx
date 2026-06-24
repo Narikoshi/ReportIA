@@ -70,43 +70,50 @@ const LandingPage = ({ onTestClick }) => {
       <section id="concept" className="relative pt-36 pb-16 md:pt-48 md:pb-24 bg-[#FDFBF7]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="max-w-4xl">
+            {/* Surtitre Doré */}
             <div className="inline-flex items-center space-x-2 border-b border-[#C5A880] pb-2 mb-8">
-              <span className="text-xs uppercase tracking-widest font-medium text-[#C5A880]">L'outil de reporting des agences d'élite</span>
+              <span className="text-xs uppercase tracking-widest font-semibold text-[#C5A880]">L'outil de reporting des agences d'élite</span>
             </div>
             
+            {/* Grand Titre Serif */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-normal tracking-tight text-[#1A1F26] font-serif mb-8 leading-[1.15]">
               Traduisez vos rapports techniques en e-mails clients d'une clarté absolue.
             </h1>
             
+            {/* Sous-titre Gris */}
             <p className="text-gray-600 text-base sm:text-lg md:text-xl font-light mb-12 max-w-2xl leading-relaxed">
               Nous aidons les experts SEO et SEA à valoriser leur travail. Collez vos données brutes, générez instantanément une synthèse orientée business qui rassure et fidélise votre clientèle.
             </p>
             
+            {/* Boutons d'action */}
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
                 onClick={onTestClick}
-                className="inline-flex items-center justify-center px-8 py-4 bg-[#1A1F26] text-[#FDFBF7] font-medium tracking-widest text-xs uppercase hover:bg-[#C5A880] transition-all duration-300 rounded-none"
+                className="inline-flex items-center justify-center px-8 py-4 bg-[#1A1F26] text-[#FDFBF7] font-semibold tracking-widest text-xs uppercase hover:bg-[#C5A880] transition-all duration-300 rounded-none"
               >
-                Essayer gratuitement
+                ESSAYER GRATUITEMENT
               </button>
               <a 
                 href="#demo" 
-                className="inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-gray-700 font-medium tracking-widest text-xs uppercase hover:border-[#1A1F26] hover:text-[#1A1F26] transition-colors rounded-none"
+                className="inline-flex items-center justify-center px-8 py-4 border border-gray-300 text-gray-700 font-semibold tracking-widest text-xs uppercase hover:border-[#1A1F26] hover:text-[#1A1F26] transition-colors rounded-none"
               >
-                Voir le résultat
+                VOIR LE RÉSULTAT
               </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* SECTION AVANT / APRÈS (Le composant de contraste) */}
+      {/* SECTION AVANT / APRÈS (La Démo) */}
       <section id="demo" className="py-24 bg-[#FBF9F4] border-t border-gray-200">
         <div className="py-10 px-4 md:px-8 max-w-7xl mx-auto">
           
           <div className="mb-20">
+            {/* Surtitre Doré */}
             <span className="text-xs uppercase tracking-widest font-semibold text-[#C5A880] block mb-3">La Démonstration</span>
+            {/* Titre H2 Serif */}
             <h2 className="text-3xl md:text-4xl font-normal font-serif text-[#1A1F26]">L'IA traduit la technique en langage business</h2>
+            {/* Sous-titre */}
             <p className="text-gray-600 font-light mt-4 max-w-xl">
               Découvrez comment l'intelligence artificielle transforme un rapport indigeste en une synthèse qui rassure le client en 10 secondes.
             </p>
@@ -116,14 +123,12 @@ const LandingPage = ({ onTestClick }) => {
               
               {/* BLOC AVANT : L'E-MAIL MOCHE (Style Outlook technique) */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden transform -rotate-1 hover:rotate-0 transition duration-300 font-sans">
-                  {/* Top bar de l'application mail */}
                   <div className="bg-slate-100 border-b border-slate-200 px-6 py-3 flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full bg-rose-400"></span>
                       <span className="w-3 h-3 rounded-full bg-amber-400"></span>
                       <span className="w-3 h-3 rounded-full bg-emerald-400"></span>
                       <span className="text-xs font-medium text-slate-400 ml-4">Rapport Mensuel SEA - Performance.eml</span>
                   </div>
-                  {/* Contenu du mail */}
                   <div className="p-6 text-sm">
                       <div className="border-b border-slate-100 pb-4 mb-4 text-slate-500 space-y-1">
                           <p><span className="font-semibold text-slate-700">De :</span> account-manager@votre-agence.com</p>
@@ -142,13 +147,11 @@ const LandingPage = ({ onTestClick }) => {
 
               {/* BLOC APRÈS : L'EFFET IA WOW (Style Dashboard Épuré) */}
               <div className="bg-slate-900 rounded-3xl p-1 shadow-2xl relative transform lg:translate-x-4 lg:scale-105 transition duration-300 font-sans">
-                  {/* Petit badge IA stylé animé */}
                   <div className="absolute -top-4 -right-2 bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-900 font-black text-xs px-4 py-1.5 rounded-full shadow-lg uppercase tracking-wider animate-bounce">
                       Généré par IA ✨
                   </div>
                   
                   <div className="bg-slate-900 rounded-[22px] p-8 text-white">
-                      {/* En-tête pro */}
                       <div className="flex items-center justify-between mb-8">
                           <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-900 text-lg shadow-md shadow-emerald-500/20">🚀</div>
@@ -160,9 +163,7 @@ const LandingPage = ({ onTestClick }) => {
                           <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full font-medium">Semaine Active</span>
                       </div>
 
-                      {/* Les KPI visuels */}
                       <div className="space-y-4 mb-6">
-                          {/* L'essentiel */}
                           <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
                               <span className="text-2xl mt-0.5">💰</span>
                               <div>
@@ -171,7 +172,6 @@ const LandingPage = ({ onTestClick }) => {
                               </div>
                           </div>
 
-                          {/* Ce qui a changé */}
                           <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
                               <span className="text-2xl mt-0.5">📈</span>
                               <div>
@@ -180,7 +180,6 @@ const LandingPage = ({ onTestClick }) => {
                               </div>
                           </div>
 
-                          {/* Notre action */}
                           <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
                               <span className="text-2xl mt-0.5">🛠️</span>
                               <div>
@@ -190,7 +189,6 @@ const LandingPage = ({ onTestClick }) => {
                           </div>
                       </div>
 
-                      {/* Footer rassurant */}
                       <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-emerald-400 font-medium">
                           <span className="flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
