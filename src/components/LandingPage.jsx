@@ -1,6 +1,12 @@
 import { Link } from 'react-router-dom';
 import React, { useState } from 'react';
 
+{/* Remplace tes <Link> par des <a> pour le scroll interne */}
+<nav className="hidden md:flex items-center space-x-10 text-xs uppercase tracking-widest font-medium text-gray-500">
+  <a href="#concept" className="hover:text-[#1A1F26] transition-colors">Le Concept</a>
+  <a href="#demo" className="hover:text-[#1A1F26] transition-colors">Démonstration</a>
+</nav>
+
 const LandingPage = () => {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#1A1F26] font-sans antialiased selection:bg-[#C5A880] selection:text-white scroll-smooth">
@@ -24,6 +30,7 @@ const LandingPage = () => {
 
       {/* HERO */}
       <section id="concept" className="relative pt-36 pb-16 md:pt-48 md:pb-24 bg-[#FDFBF7]">
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="max-w-4xl">
             <div className="inline-flex items-center space-x-2 border-b border-[#C5A880] pb-2 mb-8">
@@ -39,6 +46,7 @@ const LandingPage = () => {
               <Link to="/login" className="inline-flex items-center justify-center px-8 py-4 bg-[#1A1F26] text-[#FDFBF7] font-semibold tracking-widest text-xs uppercase hover:bg-[#C5A880] transition-all duration-300 rounded-none">
                 ESSAYER GRATUITEMENT
               </Link>
+              {/* Remplace aussi le Link ici */}
               <a href="#demo" className="inline-flex items-center justify-center px-8 py-4 border border-[#1A1F26] text-[#1A1F26] font-semibold tracking-widest text-xs uppercase hover:bg-[#1A1F26] hover:text-[#FDFBF7] transition-all duration-300 rounded-none">
                 VOIR LE RÉSULTAT
               </a>
