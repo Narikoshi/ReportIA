@@ -1,25 +1,17 @@
-import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
+import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 
 function App() {
-  // On définit la Landing Page comme page d'accueil par défaut
-  const [currentPage, setCurrentPage] = useState('landing');
-
-  // Fonction pour passer au dashboard quand on clique sur "Tester"
-  const goToDashboard = () => {
-    setCurrentPage('dashboard');
-  };
-
   return (
-    <div className="App w-full min-h-screen">
-      {/* Affichage conditionnel magique */}
-      {currentPage === 'landing' ? (
-        <LandingPage onTestClick={goToDashboard} />
-      ) : (
-        <Dashboard />
-      )}
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </Router>
   );
 }
 
