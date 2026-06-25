@@ -5,13 +5,12 @@ const LandingPage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    // Ajout de la classe scroll-smooth pour le glissement doux
+    // La classe scroll-smooth ici active le glissement doux
     <div className="min-h-screen bg-[#FDFBF7] text-[#1A1F26] font-sans antialiased selection:bg-[#C5A880] selection:text-white scroll-smooth">
       
       {/* HEADER & NAVIGATION */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#FDFBF7]/90 backdrop-blur-md border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          
           <div className="flex items-center space-x-3 cursor-pointer">
             <div className="w-8 h-8 bg-[#1A1F26] flex items-center justify-center text-[#FDFBF7] text-sm font-serif">R</div>
             <span className="text-lg font-semibold tracking-widest uppercase text-[#1A1F26]">ReportAI</span>
@@ -53,7 +52,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* SECTION DÉMO (Version Impact visuel max) */}
+      {/* SECTION DÉMO */}
       <section id="demo" className="py-24 px-8 max-w-6xl mx-auto w-full border-t border-gray-200 bg-[#FBF9F4]">
         <div className="mb-20 text-center">
             <span className="text-xs uppercase tracking-widest font-semibold text-[#C5A880] block mb-3">LA DÉMONSTRATION</span>
@@ -76,25 +75,51 @@ const LandingPage = () => {
                         <p><span className="font-semibold text-slate-700">À :</span> contact@garage-artisan.fr</p>
                     </div>
                     <div className="text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200">
-                        <p className="font-bold text-rose-600 mb-2">⚠️ Données techniques :</p>
-                        "Bonjour, impressions +12%. <span className="bg-rose-100 text-rose-800 font-mono px-1 rounded">CPC 1,42€</span>, <span className="bg-rose-100 text-rose-800 font-mono px-1 rounded">CTR 3,5%</span>. <span className="bg-rose-100 text-rose-800 font-mono px-1 rounded">ROAS 2,8</span>, impacté par <span className="bg-rose-100 text-rose-800 font-mono px-1 rounded">taux de rebond (72%)</span>..."
+                        <p className="font-bold text-rose-600 mb-2">⚠️ Données techniques brutes :</p>
+                        "Bonjour, suite aux optimisations sur la Search Console, les impressions grimpent de 12%. Le <span className="bg-rose-100 text-rose-800 font-mono px-1 rounded">CPC moyen</span> s'établit à 1,42€ pour un <span className="bg-rose-100 text-rose-800 font-mono px-1 rounded">CTR de 3,5%</span>. Le <span className="bg-rose-100 text-rose-800 font-mono px-1 rounded">ROAS global</span> est à 2,8, impacté par la baisse des conversions sur la campagne Marque à cause de la hausse du <span className="bg-rose-100 text-rose-800 font-mono px-1 rounded">taux de rebond (72%)</span>..."
                     </div>
                 </div>
             </div>
 
-            {/* BLOC APRÈS */}
+            {/* BLOC APRÈS - TON CODE EXACT */}
             <div className="bg-slate-900 rounded-3xl p-1 shadow-2xl relative transform lg:translate-x-4 lg:scale-105 transition duration-300">
+                {/* Petit badge IA stylé animé */}
                 <div className="absolute -top-4 -right-2 bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-900 font-black text-xs px-4 py-1.5 rounded-full shadow-lg uppercase tracking-wider animate-bounce">
                     Généré par IA ✨
                 </div>
+                
                 <div className="bg-slate-900 rounded-[22px] p-8 text-white">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-900 text-lg">🚀</div>
-                        <div><h4 className="font-bold text-white text-base">Point Météo Google</h4></div>
+                    {/* En-tête pro */}
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-900 text-lg shadow-md shadow-emerald-500/20">🚀</div>
+                            <div>
+                                <h4 className="font-bold text-white text-base">Point Météo Google</h4>
+                                <p className="text-xs text-slate-400">Le résumé hebdo en 15 secondes</p>
+                            </div>
+                        </div>
+                        <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full font-medium">Semaine Active</span>
                     </div>
-                    <div className="space-y-4">
-                        <div className="bg-slate-800/60 p-4 rounded-xl">💰 <span className="font-semibold text-emerald-400">Rentabilité :</span> Pour 100€ investis, 280€ net générés.</div>
-                        <div className="bg-slate-800/60 p-4 rounded-xl">📈 <span className="font-semibold text-sky-400">Visibilité :</span> Publicités captent plus l'attention (+12%).</div>
+
+                    {/* Les KPI visuels */}
+                    <div className="space-y-4 mb-6">
+                        {/* L'essentiel */}
+                        <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
+                            <span className="text-2xl mt-0.5">💰</span>
+                            <div>
+                                <h5 className="font-semibold text-emerald-400 text-sm mb-0.5">Votre Rentabilité</h5>
+                                <p className="text-slate-300 text-sm">Pour <span className="text-white font-bold underline decoration-emerald-400">100€ investis</span>, vos campagnes ont généré <span className="text-white font-bold bg-slate-700 px-1.5 py-0.5 rounded">280€ net</span> de ventes directes. Le système est très sain.</p>
+                            </div>
+                        </div>
+
+                        {/* Ce qui a changé */}
+                        <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
+                            <span className="text-2xl mt-0.5">📈</span>
+                            <div>
+                                <h5 className="font-semibold text-sky-400 text-sm mb-0.5">Votre Visibilité</h5>
+                                <p className="text-slate-300 text-sm">Vos publicités captent l'attention (+12%). Seul point à surveiller : les visiteurs quittent le site un peu trop vite une fois arrivés.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -109,3 +134,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
