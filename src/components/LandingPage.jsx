@@ -23,7 +23,7 @@ const LandingPage = () => {
             <a href="#demo" className="hover:text-[#1A1F26] transition-colors">Démonstration</a>
           </nav>
           <Link to="/login" className="inline-flex items-center justify-center px-6 py-3 text-xs font-semibold tracking-widest uppercase border border-[#1A1F26] text-[#1A1F26] hover:bg-[#1A1F26] hover:text-[#FDFBF7] transition-all duration-300 rounded-none">
-            Connexion
+            Connexion/inscription
           </Link>
         </div>
       </header>
