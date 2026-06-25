@@ -3,9 +3,16 @@ import React, { useState } from 'react';
 export default function Dashboard() {
   const [result, setResult] = useState(null);
 
-  const handleGenerate = () => {
-    // Simulation de l'IA
-    setResult("Bonjour ! Votre campagne SEA a généré 280€ de revenus pour 100€ investis. Tout est au vert.");
+  // Remplace ta fonction handleGenerate dans src/components/Dashboard.jsx par celle-ci :
+  const handleGenerate = async () => {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rawData, tone: 'Rassurant' }),
+    });
+    
+    const data = await response.json();
+    setResult(data.result);
   };
 
   return (
