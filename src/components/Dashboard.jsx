@@ -11,7 +11,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
 
-  // SÉCURITÉ
+  // SÉCURITÉ : Vérifier si l'utilisateur est bien connecté
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -20,22 +20,23 @@ export default function Dashboard() {
     checkUser();
   }, [navigate]);
 
+  // DÉCONNEXION
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
 
-  // LOGIQUE API GEMINI (La version correcte)
+  // LOGIQUE API GEMINI
   const generateReport = async () => {
     if (!rawData.trim()) return;
     setIsLoading(true);
 
     const apiKey = import.meta.env.VITE_AI_API_KEY;
 
-    // Fallback de sécurité si la clé manque
+    // Fallback de démonstration si la clé manque
     if (!apiKey) {
       setTimeout(() => {
-        setGeneratedText("• Votre trafic est en croissance de 15% : une excellente nouvelle pour votre visibilité locale.\n• Vos coûts publicitaires sont optimisés.\n• Votre site attire de nouveaux clients qualifiés.");
+        setGeneratedText("• Visibilité : Votre trafic organique a progressé de 12% grâce aux optimisations techniques.\n• Rentabilité : Le coût par clic a diminué, améliorant ainsi votre marge sur chaque vente.\n• Action : Nous recommandons de maintenir les efforts sur les mots-clés actuels pour sécuriser vos positions.");
         setIsLoading(false);
       }, 1500);
       return;
@@ -59,7 +60,7 @@ export default function Dashboard() {
       if (data.candidates && data.candidates[0].content.parts[0].text) {
         setGeneratedText(data.candidates[0].content.parts[0].text);
       } else {
-        throw new Error("Réponse invalide de l'IA");
+        throw new Error("Réponse invalide");
       }
     } catch (error) {
       console.error("Erreur API:", error);
@@ -71,6 +72,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex font-sans text-[#1A1F26]">
+      {/* SIDEBAR */}
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between p-6">
         <div>
           <div className="flex items-center gap-3 mb-10">
@@ -87,10 +89,12 @@ export default function Dashboard() {
         </button>
       </div>
 
+      {/* MAIN */}
       <div className="flex-1 p-10 flex flex-col relative">
         <h2 className="text-2xl font-serif text-[#1A1F26] mb-8">Nouveau Reporting</h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
+          {/* INPUTS */}
           <div className="flex flex-col gap-6">
             <div className="flex-1 flex flex-col">
               <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Collez vos données brutes SEO/Ads ici</label>
@@ -113,10 +117,7 @@ export default function Dashboard() {
 
             <div className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded shadow-sm">
               <span className="text-xs font-semibold text-gray-700">Activer la Marque Blanche (Retirer le logo)</span>
-              <button 
-                onClick={() => setIsPremiumModalOpen(true)}
-                className="w-10 h-5 bg-gray-200 rounded-full relative transition-colors hover:bg-gray-300"
-              >
+              <button onClick={() => setIsPremiumModalOpen(true)} className="w-10 h-5 bg-gray-200 rounded-full relative transition-colors hover:bg-gray-300">
                 <span className="absolute left-1 top-1 bg-white w-3 h-3 rounded-full"></span>
               </button>
             </div>
@@ -130,6 +131,7 @@ export default function Dashboard() {
             </button>
           </div>
 
+          {/* OUTPUT */}
           <div className="bg-slate-900 rounded shadow-lg p-8 flex flex-col relative overflow-hidden">
             <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-6 border-b border-gray-700 pb-4">Aperçu pour votre client</h3>
             
@@ -157,6 +159,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* MODAL */}
       {isPremiumModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded shadow-2xl max-w-sm w-full mx-4 text-center">
