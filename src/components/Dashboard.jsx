@@ -27,9 +27,39 @@ export default function Dashboard() {
   };
 
   // LOGIQUE API (Le Moteur) [cite: 898]
-  const generateReport = async () => {
+const generateReport = async () => {
     if (!rawData.trim()) return;
     setIsLoading(true);
+
+    const apiKey = import.meta.env.VITE_AI_API_KEY;
+
+    try {
+      // Endpoint officiel pour Gemini Flash 1.5
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: `Tu es un expert SEO. Résume ces données en 3 points vulgarisés pour un client artisan : ${rawData}` }]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      // On extrait la réponse correctement formatée par Gemini
+      if (data.candidates && data.candidates[0].content.parts[0].text) {
+        setGeneratedText(data.candidates[0].content.parts[0].text);
+      } else {
+        setGeneratedText("Erreur : Impossible de lire la réponse de l'IA.");
+      }
+    } catch (error) {
+      setGeneratedText("Erreur de connexion à l'API Google.");
+    }
+
+    setIsLoading(false);
+  };
 
     const apiKey = import.meta.env.VITE_AI_API_KEY; // Clé depuis l'environnement 
 
