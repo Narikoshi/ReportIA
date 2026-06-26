@@ -3,23 +3,28 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
 export default function Login() {
+  // STATES
+  const [isChecking, setIsChecking] = useState(true); // Gère l'écran de chargement
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
   const navigate = useNavigate();
 
-  // LE DÉTECTEUR AUTOMATIQUE : Si on est connecté, go Dashboard !
+  // DÉTECTION AUTOMATIQUE DE SESSION (Anti-Flash)
   useEffect(() => {
-    // Vérifie si on a déjà une session active au chargement
+    // 1. On regarde si on a déjà une session en arrivant sur la page
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate('/dashboard');
+      } else {
+        setIsChecking(false); // Pas connecté ? On affiche le formulaire
       }
     });
 
-    // Écoute les changements (ex: quand Google nous renvoie sur la page)
+    // 2. On écoute si l'état change (ex: retour de Google)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         navigate('/dashboard');
@@ -29,6 +34,7 @@ export default function Login() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // LOGIQUE EMAIL / MOT DE PASSE
   const handleAuth = async (e) => {
     e.preventDefault();
     setError('');
@@ -44,56 +50,88 @@ export default function Login() {
     setLoading(false);
   };
 
+  // LOGIQUE GOOGLE
   const handleGoogleLogin = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      // On retire le redirectTo forcé, on laisse Supabase faire son travail naturellement
+      // Pas de redirectTo forcé, on laisse Vercel et le useEffect faire le job
     });
     if (error) setError(error.message);
     setLoading(false);
   };
 
+  // -------------------------------------------------------------
+  // RENDU VISUEL
+  // -------------------------------------------------------------
+
+  // 1. Écran de chargement (le temps que Supabase réponde)
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+        <div className="w-12 h-12 bg-[#1A1F26] flex items-center justify-center text-[#FDFBF7] text-lg font-serif animate-pulse">R</div>
+      </div>
+    );
+  }
+
+  // 2. Le formulaire classique
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex flex-col justify-center items-center px-4 font-sans">
+      
+      {/* HEADER LOGO */}
       <Link to="/" className="mb-10 text-center block hover:opacity-80 transition-opacity">
         <div className="w-10 h-10 bg-[#1A1F26] flex items-center justify-center text-[#FDFBF7] text-sm font-serif mx-auto mb-4">R</div>
         <h1 className="text-xl font-semibold tracking-widest uppercase text-[#1A1F26]">ReportAI</h1>
       </Link>
 
+      {/* BOÎTE PRINCIPALE */}
       <div className="w-full max-w-sm bg-white border border-gray-200 p-8 shadow-sm">
         <h2 className="text-[10px] font-semibold tracking-widest uppercase text-gray-500 mb-8 text-center">
           {isSignUp ? 'Créer votre espace agence' : 'Connexion à votre espace'}
         </h2>
         
+        {/* FORMULAIRE EMAIL */}
         <form onSubmit={handleAuth} className="space-y-4">
           {error && <p className="text-red-500 text-xs text-center font-medium bg-red-50 p-2 rounded">{error}</p>}
           
           <div>
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Email</label>
             <input 
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)} 
-              className="w-full border border-gray-200 bg-[#FDFBF7] p-3 text-sm focus:outline-none focus:border-[#C5A880] transition-colors" required 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              className="w-full border border-gray-200 bg-[#FDFBF7] p-3 text-sm focus:outline-none focus:border-[#C5A880] transition-colors" 
+              required 
             />
           </div>
           <div>
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Mot de passe</label>
             <input 
-              type="password" value={password} onChange={(e) => setPassword(e.target.value)} 
-              className="w-full border border-gray-200 bg-[#FDFBF7] p-3 text-sm focus:outline-none focus:border-[#C5A880] transition-colors" required minLength="6"
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              className="w-full border border-gray-200 bg-[#FDFBF7] p-3 text-sm focus:outline-none focus:border-[#C5A880] transition-colors" 
+              required 
+              minLength="6"
             />
           </div>
-          <button type="submit" disabled={loading} className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors disabled:opacity-50 mt-2">
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors disabled:opacity-50 mt-2"
+          >
             {loading ? 'Chargement...' : (isSignUp ? "S'inscrire" : "Se connecter")}
           </button>
         </form>
 
+        {/* SÉPARATEUR */}
         <div className="mt-6 flex items-center justify-between">
           <span className="border-b border-gray-200 w-1/5 lg:w-1/4"></span>
           <span className="text-[10px] text-center text-gray-400 uppercase tracking-widest">Ou continuer avec</span>
           <span className="border-b border-gray-200 w-1/5 lg:w-1/4"></span>
         </div>
 
+        {/* BOUTON GOOGLE */}
         <button 
           onClick={handleGoogleLogin} 
           disabled={loading}
@@ -105,14 +143,19 @@ export default function Login() {
           Google
         </button>
 
+        {/* TOGGLE INSCRIPTION / CONNEXION */}
         <div className="mt-6 text-center border-t border-gray-100 pt-6">
           <p className="text-xs text-gray-500">
             {isSignUp ? "Vous avez déjà un compte ?" : "Pas encore de compte ?"}
           </p>
-          <button onClick={() => { setIsSignUp(!isSignUp); setError(''); }} className="mt-2 text-xs font-bold text-[#C5A880] uppercase tracking-widest hover:text-[#1A1F26] transition-colors">
+          <button 
+            onClick={() => { setIsSignUp(!isSignUp); setError(''); }} 
+            className="mt-2 text-xs font-bold text-[#C5A880] uppercase tracking-widest hover:text-[#1A1F26] transition-colors"
+          >
             {isSignUp ? "Se connecter" : "Créer un compte"}
           </button>
         </div>
+
       </div>
     </div>
   );
