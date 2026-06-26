@@ -4,14 +4,11 @@ import { supabase } from '../supabaseClient';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  
-  // ÉTATS
   const [rawData, setRawData] = useState('');
   const [generatedText, setGeneratedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
 
-  // SÉCURITÉ : Vérifier si l'utilisateur est bien connecté
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -20,59 +17,47 @@ export default function Dashboard() {
     checkUser();
   }, [navigate]);
 
-  // DÉCONNEXION
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
 
-  // LOGIQUE API GEMINI (La version corrigée)
   const generateReport = async () => {
-  if (!rawData.trim()) return;
-  setIsLoading(true);
+    if (!rawData.trim()) return;
+    setIsLoading(true);
 
-  const apiKey = import.meta.env.VITE_AI_API_KEY;
+    const apiKey = import.meta.env.VITE_AI_API_KEY;
 
-  try {
-    // URL avec version stable
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    
-    console.log("Tentative d'appel vers:", url); // Pour vérifier si l'URL est correcte
+    try {
+      // URL CORRECTE ET À JOUR POUR GEMINI 1.5 FLASH
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: `Tu es un expert SEO. Résume ces données en 3 points vulgarisés pour un client artisan : ${rawData}` }]
+          }]
+        })
+      });
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [{ text: `Tu es un expert SEO. Résume ces données en 3 points vulgarisés pour un client artisan : ${rawData}` }]
-        }]
-      })
-    });
-
-    const data = await response.json();
-    
-    // LOG CRUCIAL : On affiche tout l'objet de réponse
-    console.log("DÉTAIL RÉPONSE GOOGLE :", data);
-
-    if (response.ok) {
-       if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+      const data = await response.json();
+      
+      // Extraction sécurisée
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
         setGeneratedText(data.candidates[0].content.parts[0].text);
       } else {
-        setGeneratedText("Erreur : Format de réponse inconnu.");
+        console.error("Réponse reçue:", data);
+        setGeneratedText("Erreur : La structure de réponse de Google est inattendue. Vérifiez votre console (F12).");
       }
-    } else {
-      // Si la réponse n'est pas "ok", Google nous donne l'erreur ici
-      setGeneratedText(`Erreur API (${response.status}): ${data.error?.message || "Erreur inconnue"}`);
+    } catch (error) {
+      setGeneratedText("Erreur critique : Impossible de contacter Google Gemini.");
     }
-    
-  } catch (error) {
-    console.error("Erreur réseau:", error);
-    setGeneratedText("Erreur de connexion.");
-  }
 
-  setIsLoading(false);
-};
+    setIsLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex font-sans text-[#1A1F26]">
       {/* SIDEBAR */}
@@ -97,82 +82,28 @@ export default function Dashboard() {
         <h2 className="text-2xl font-serif text-[#1A1F26] mb-8">Nouveau Reporting</h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
-          {/* INPUTS */}
           <div className="flex flex-col gap-6">
-            <div className="flex-1 flex flex-col">
-              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Collez vos données brutes SEO/Ads ici</label>
-              <textarea 
-                value={rawData}
-                onChange={(e) => setRawData(e.target.value)}
-                className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded shadow-sm"
-                placeholder="Ex: Le CPC a augmenté de 15% (1.42€), le CTR est en baisse à 2.1%..."
-              ></textarea>
-            </div>
+            <textarea 
+              value={rawData}
+              onChange={(e) => setRawData(e.target.value)}
+              className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded shadow-sm"
+              placeholder="Ex: Le CPC a augmenté de 15% (1.42€)..."
+            ></textarea>
             
-            <div>
-              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Ton du message</label>
-              <select className="w-full border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#C5A880] transition-colors appearance-none rounded shadow-sm">
-                <option>Rassurant</option>
-                <option disabled>Direct 🔒</option>
-                <option disabled>Enthousiaste 🔒</option>
-              </select>
-            </div>
-
-            <div className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded shadow-sm">
-              <span className="text-xs font-semibold text-gray-700">Activer la Marque Blanche (Retirer le logo)</span>
-              <button onClick={() => setIsPremiumModalOpen(true)} className="w-10 h-5 bg-gray-200 rounded-full relative transition-colors hover:bg-gray-300">
-                <span className="absolute left-1 top-1 bg-white w-3 h-3 rounded-full"></span>
-              </button>
-            </div>
-
             <button 
               onClick={generateReport}
               disabled={isLoading || !rawData.trim()}
-              className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors flex items-center justify-center gap-2 rounded shadow-md disabled:opacity-50"
+              className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors rounded shadow-md disabled:opacity-50"
             >
               {isLoading ? "Génération en cours..." : "Générer la synthèse magique ✨"}
             </button>
           </div>
 
-          {/* OUTPUT */}
-          <div className="bg-slate-900 rounded shadow-lg p-8 flex flex-col relative overflow-hidden">
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-6 border-b border-gray-700 pb-4">Aperçu pour votre client</h3>
-            
-            <div className="flex-1 flex flex-col text-white whitespace-pre-wrap text-sm leading-relaxed">
-              {generatedText ? (
-                <p>{generatedText}</p>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center text-gray-500 h-full">
-                  <p className="font-serif italic">Votre synthèse générée par IA apparaîtra ici...</p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-8 pt-4 border-t border-gray-700 text-center">
-              <p className="text-[10px] text-gray-500 font-semibold tracking-widest">Généré par ReportAI ✨</p>
-            </div>
-
-            <button 
-              onClick={() => alert("Bientôt disponible ! Pour l'instant, copiez-collez ce texte.")}
-              className="mt-6 w-full bg-white text-slate-900 py-3 text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors rounded"
-            >
-              Télécharger en PDF
-            </button>
+          <div className="bg-slate-900 rounded shadow-lg p-8 text-white">
+            {generatedText ? <p>{generatedText}</p> : <p className="text-gray-500 italic">En attente des données...</p>}
           </div>
         </div>
       </div>
-
-      {/* MODAL */}
-      {isPremiumModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded shadow-2xl max-w-sm w-full mx-4 text-center">
-            <div className="w-16 h-16 bg-[#C5A880] text-white rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">🚀</div>
-            <h3 className="text-xl font-serif text-[#1A1F26] mb-4">Passez à la vitesse supérieure</h3>
-            <p className="text-sm text-gray-600 mb-8 leading-relaxed">La marque blanche et les tons personnalisés sont réservés au plan Agence Premium (99€/mois).</p>
-            <button onClick={() => setIsPremiumModalOpen(false)} className="w-full bg-[#1A1F26] text-white py-3 text-xs font-bold uppercase tracking-widest rounded hover:bg-gray-800 transition-colors">Fermer</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
