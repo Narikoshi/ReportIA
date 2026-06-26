@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
@@ -10,6 +10,25 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // LE DÉTECTEUR AUTOMATIQUE : Si on est connecté, go Dashboard !
+  useEffect(() => {
+    // Vérifie si on a déjà une session active au chargement
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/dashboard');
+      }
+    });
+
+    // Écoute les changements (ex: quand Google nous renvoie sur la page)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        navigate('/dashboard');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
   const handleAuth = async (e) => {
     e.preventDefault();
     setError('');
@@ -18,23 +37,18 @@ export default function Login() {
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) setError(error.message);
-      else navigate('/dashboard');
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError('E-mail ou mot de passe incorrect.');
-      else navigate('/dashboard');
     }
     setLoading(false);
   };
 
-  // NOUVELLE FONCTION GOOGLE
   const handleGoogleLogin = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin + '/dashboard'
-      }
+      // On retire le redirectTo forcé, on laisse Supabase faire son travail naturellement
     });
     if (error) setError(error.message);
     setLoading(false);
@@ -74,14 +88,12 @@ export default function Login() {
           </button>
         </form>
 
-        {/* SÉPARATEUR */}
         <div className="mt-6 flex items-center justify-between">
           <span className="border-b border-gray-200 w-1/5 lg:w-1/4"></span>
-          <a href="#" className="text-[10px] text-center text-gray-400 uppercase tracking-widest">Ou continuer avec</a>
+          <span className="text-[10px] text-center text-gray-400 uppercase tracking-widest">Ou continuer avec</span>
           <span className="border-b border-gray-200 w-1/5 lg:w-1/4"></span>
         </div>
 
-        {/* BOUTON GOOGLE */}
         <button 
           onClick={handleGoogleLogin} 
           disabled={loading}
