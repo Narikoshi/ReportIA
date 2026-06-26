@@ -29,32 +29,27 @@ export default function Dashboard() {
     const apiKey = import.meta.env.VITE_AI_API_KEY;
 
     try {
-      // URL CORRECTE ET À JOUR POUR GEMINI 1.5 FLASH
+      // Utilisation du modèle stable recommandé par Google en 2026
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{ text: `Tu es un expert SEO. Résume ces données en 3 points vulgarisés pour un client artisan : ${rawData}` }]
-          }]
+          contents: [{ parts: [{ text: `Tu es un expert SEO. Résume ces données en 3 points vulgarisés pour un client artisan : ${rawData}` }] }]
         })
       });
 
       const data = await response.json();
       
-      // Extraction sécurisée
-      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
         setGeneratedText(data.candidates[0].content.parts[0].text);
       } else {
-        console.error("Réponse reçue:", data);
-        setGeneratedText("Erreur : La structure de réponse de Google est inattendue. Vérifiez votre console (F12).");
+        setGeneratedText("Erreur : Le modèle d'IA a changé. Contactez le support.");
       }
     } catch (error) {
-      setGeneratedText("Erreur critique : Impossible de contacter Google Gemini.");
+      setGeneratedText("Erreur : Impossible de contacter l'IA.");
     }
-
     setIsLoading(false);
   };
 
@@ -72,13 +67,11 @@ export default function Dashboard() {
             <a href="#" className="block text-xs font-semibold text-gray-400 uppercase tracking-widest hover:text-[#1A1F26] transition-colors">Historique</a>
           </nav>
         </div>
-        <button onClick={handleLogout} className="text-left text-xs font-bold text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors">
-          Se déconnecter
-        </button>
+        <button onClick={handleLogout} className="text-left text-xs font-bold text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors">Se déconnecter</button>
       </div>
 
       {/* MAIN */}
-      <div className="flex-1 p-10 flex flex-col relative">
+      <div className="flex-1 p-10 flex flex-col">
         <h2 className="text-2xl font-serif text-[#1A1F26] mb-8">Nouveau Reporting</h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
@@ -87,23 +80,45 @@ export default function Dashboard() {
               value={rawData}
               onChange={(e) => setRawData(e.target.value)}
               className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded shadow-sm"
-              placeholder="Ex: Le CPC a augmenté de 15% (1.42€)..."
+              placeholder="Ex: Le CPC a augmenté de 15%..."
             ></textarea>
             
-            <button 
-              onClick={generateReport}
-              disabled={isLoading || !rawData.trim()}
-              className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors rounded shadow-md disabled:opacity-50"
-            >
+            {/* OPTIONS PREMIUM */}
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Ton du message</label>
+              <select className="w-full border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#C5A880] rounded">
+                <option>Rassurant</option>
+                <option disabled>Direct 🔒</option>
+                <option disabled>Enthousiaste 🔒</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded">
+              <span className="text-xs font-semibold text-gray-700">Activer la Marque Blanche 🔒</span>
+              <button onClick={() => setIsPremiumModalOpen(true)} className="w-10 h-5 bg-gray-200 rounded-full"></button>
+            </div>
+
+            <button onClick={generateReport} disabled={isLoading} className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors rounded">
               {isLoading ? "Génération en cours..." : "Générer la synthèse magique ✨"}
             </button>
           </div>
 
           <div className="bg-slate-900 rounded shadow-lg p-8 text-white">
-            {generatedText ? <p>{generatedText}</p> : <p className="text-gray-500 italic">En attente des données...</p>}
+            {generatedText ? <p className="text-sm leading-relaxed">{generatedText}</p> : <p className="text-gray-500 italic">En attente...</p>}
           </div>
         </div>
       </div>
+
+      {/* MODAL */}
+      {isPremiumModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded max-w-sm w-full mx-4 text-center">
+            <h3 className="text-xl font-serif mb-4">Passer au Premium 🚀</h3>
+            <p className="text-sm text-gray-600 mb-8">La marque blanche est réservée au plan Agence (99€/mois).</p>
+            <button onClick={() => setIsPremiumModalOpen(false)} className="w-full bg-[#1A1F26] text-white py-3 text-xs uppercase rounded">Fermer</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
