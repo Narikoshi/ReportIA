@@ -28,51 +28,51 @@ export default function Dashboard() {
 
   // LOGIQUE API GEMINI (La version corrigée)
   const generateReport = async () => {
-    if (!rawData.trim()) return;
-    setIsLoading(true);
+  if (!rawData.trim()) return;
+  setIsLoading(true);
 
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
 
-    // Fallback de démonstration si la clé manque
-    if (!apiKey) {
-      setTimeout(() => {
-        setGeneratedText("• Visibilité : Votre trafic organique a progressé de 12% grâce aux optimisations techniques.\n• Rentabilité : Le coût par clic a diminué, améliorant ainsi votre marge sur chaque vente.\n• Action : Nous recommandons de maintenir les efforts sur les mots-clés actuels pour sécuriser vos positions.");
-        setIsLoading(false);
-      }, 1500);
-      return;
-    }
+  try {
+    // URL avec version stable
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    
+    console.log("Tentative d'appel vers:", url); // Pour vérifier si l'URL est correcte
 
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [{ text: `Tu es un expert SEO. Prends les données techniques suivantes et résume-les en 3 points vulgarisés, sans jargon, de manière rassurante pour un client artisan : ${rawData}` }]
-          }]
-        })
-      });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [{ text: `Tu es un expert SEO. Résume ces données en 3 points vulgarisés pour un client artisan : ${rawData}` }]
+        }]
+      })
+    });
 
-      const data = await response.json();
-      
-      // Extraction sécurisée selon la structure de Gemini
-      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+    const data = await response.json();
+    
+    // LOG CRUCIAL : On affiche tout l'objet de réponse
+    console.log("DÉTAIL RÉPONSE GOOGLE :", data);
+
+    if (response.ok) {
+       if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
         setGeneratedText(data.candidates[0].content.parts[0].text);
       } else {
-        console.error("Réponse API:", data);
-        setGeneratedText("Erreur : Le format de réponse de Google est inattendu.");
+        setGeneratedText("Erreur : Format de réponse inconnu.");
       }
-    } catch (error) {
-      console.error("Erreur réseau:", error);
-      setGeneratedText("Erreur : Impossible de contacter l'IA.");
+    } else {
+      // Si la réponse n'est pas "ok", Google nous donne l'erreur ici
+      setGeneratedText(`Erreur API (${response.status}): ${data.error?.message || "Erreur inconnue"}`);
     }
+    
+  } catch (error) {
+    console.error("Erreur réseau:", error);
+    setGeneratedText("Erreur de connexion.");
+  }
 
-    setIsLoading(false);
-  };
-
+  setIsLoading(false);
+};
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex font-sans text-[#1A1F26]">
       {/* SIDEBAR */}
