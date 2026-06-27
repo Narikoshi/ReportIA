@@ -12,20 +12,27 @@ export default function Dashboard() {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        // Tente de récupérer la session courante
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        // Interception et correction du bug de Clock Skew (horloge décalée dans le futur)
-        if (error && error.message.includes('future')) {
+        if (error || !session) {
+          // Si une anomalie ou une erreur de date future est retournée
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !refreshData?.session) {
+            return navigate('/login');
+          }
+        }
+      } catch (err) {
+        console.warn("Ajustement du décalage d'horloge (Clock Skew) en cours...");
+        try {
+          // Force la synchronisation en cas de levée d'exception immédiate par le SDK
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError || !refreshData?.session) {
             navigate('/login');
           }
-        } else if (!session) {
+        } catch (retryErr) {
           navigate('/login');
         }
-      } catch (err) {
-        console.error("Erreur de synchronisation de session (Clock Skew):", err);
-        navigate('/login');
       }
     };
     checkUser();
@@ -62,7 +69,6 @@ export default function Dashboard() {
         throw new Error(data.error);
       }
 
-      // Extraction sécurisée de la réponse textuelle de l'API Gemini
       if (data && data.text) {
         setGeneratedText(data.text);
       } else if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
