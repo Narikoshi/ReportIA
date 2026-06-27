@@ -59,21 +59,23 @@ export default function Dashboard() {
   setGeneratedText(''); 
   
   try {
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ rawData, tone }),
-    });
+  const response = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rawData, tone }),
+  });
 
-    const data = await response.json();
+  // Extraire le JSON de la réponse
+  const data = await response.json();
 
+  // Gérer le cas où le backend renvoie une erreur (ex: 400 ou 500)
     if (!response.ok) {
       throw new Error(data.error || 'Erreur lors de la génération');
     }
-
-    setGeneratedText(data.result);
+  
+    // Mettre à jour l'interface avec le texte généré
+    setGeneratedText(data.text);
+  
   } catch (error) {
     console.error("Erreur Fetch:", error);
     setGeneratedText(`Erreur : ${error.message}`);
