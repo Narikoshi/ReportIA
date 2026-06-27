@@ -22,35 +22,47 @@ export default function Dashboard() {
     navigate('/login');
   };
 
-  const generateReport = async () => {
-    if (!rawData.trim()) return;
-    setIsLoading(true);
-
-    const apiKey = import.meta.env.VITE_AI_API_KEY;
+ const generateReport = async () => { 
+    if (!rawData.trim()) return; 
+    setIsLoading(true); 
+    setGeneratedText('');
 
     try {
-      // Utilisation du modèle stable recommandé par Google en 2026
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      
-      const response = await fetch(url, {
+      const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `Tu es un expert SEO. Résume ces données en 3 points vulgarisés pour un client artisan : ${rawData}` }] }]
-        })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          rawData: rawData 
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
       
-      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        setGeneratedText(data.candidates[0].content.parts[0].text);
-      } else {
-        setGeneratedText("Erreur : Le modèle d'IA a changé. Contactez le support.");
+      if (data.error) {
+        throw new Error(data.error);
       }
+
+      // Extraction propre et sécurisée pour éviter l'erreur de structure inattendue
+      if (data && data.text) {
+        setGeneratedText(data.text);
+      } else if (data && data.output) {
+        setGeneratedText(data.output);
+      } else {
+        setGeneratedText(typeof data === 'string' ? data : JSON.stringify(data));
+      }
+
     } catch (error) {
-      setGeneratedText("Erreur : Impossible de contacter l'IA.");
+      console.error("Erreur API:", error);
+      setGeneratedText("Erreur : Impossible de contacter l'IA. Veuillez réessayer.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
