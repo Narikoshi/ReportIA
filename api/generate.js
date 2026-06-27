@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/generative-ai';
 
 // Initialisation moderne conforme aux dernières normes du SDK
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.VITE_AI_API_KEY });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
