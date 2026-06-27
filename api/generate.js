@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   } 
   
   try { 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' }); 
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }); 
     
     // 1. Appeler l'API Gemini (Correction des backticks appliquée ici)
     const prompt = `Génère un contenu avec un ton ${tone} basé sur ces données : ${rawData}`;
