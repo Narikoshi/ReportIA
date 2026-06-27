@@ -26,7 +26,7 @@ try {
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   
   // 1. Appeler l'API Gemini
-  const prompt = `Génère un contenu avec un ton ${tone} basé sur ces données : ${rawData}`;
+  const prompt = Génère un contenu avec un ton ${tone} basé sur ces données : ${rawData};
   const result = await model.generateContent(prompt);
   const text = result.response.text();
 
