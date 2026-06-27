@@ -11,8 +11,22 @@ export default function Dashboard() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) navigate('/login');
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        // Résolution du bug de Clock Skew si l'horloge de l'appareil est désynchronisée
+        if (error && error.message.includes('future')) {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !refreshData?.session) {
+            navigate('/login');
+          }
+        } else if (!session) {
+          navigate('/login');
+        }
+      } catch (err) {
+        console.error("Erreur de session Supabase (Clock Skew):", err);
+        navigate('/login');
+      }
     };
     checkUser();
   }, [navigate]);
@@ -22,7 +36,7 @@ export default function Dashboard() {
     navigate('/login');
   };
 
- const generateReport = async () => { 
+  const generateReport = async () => { 
     if (!rawData.trim()) return; 
     setIsLoading(true); 
     setGeneratedText('');
@@ -48,9 +62,11 @@ export default function Dashboard() {
         throw new Error(data.error);
       }
 
-      // Extraction propre et sécurisée pour éviter l'erreur de structure inattendue
+      // Extraction propre et sécurisée pour éviter l'erreur de structure inattendue (404/Object)
       if (data && data.text) {
         setGeneratedText(data.text);
+      } else if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        setGeneratedText(data.candidates[0].content.parts[0].text);
       } else if (data && data.output) {
         setGeneratedText(data.output);
       } else {
@@ -58,7 +74,7 @@ export default function Dashboard() {
       }
 
     } catch (error) {
-      console.error("Erreur API:", error);
+      console.error("Erreur API Gemini:", error);
       setGeneratedText("Erreur : Impossible de contacter l'IA. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
