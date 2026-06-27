@@ -9,23 +9,22 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
 
+  // 1. GESTION ROBUSTE DE LA SESSION
   useEffect(() => {
     const checkUser = async () => {
       try {
-        // Tente de récupérer la session courante
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error || !session) {
-          // Si une anomalie ou une erreur de date future est retournée
+          // Tentative de secours automatique
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError || !refreshData?.session) {
             return navigate('/login');
           }
         }
       } catch (err) {
-        console.warn("Ajustement du décalage d'horloge (Clock Skew) en cours...");
+        console.warn("Clock Skew détecté. Tentative de rafraîchissement forcé...");
         try {
-          // Force la synchronisation en cas de levée d'exception immédiate par le SDK
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError || !refreshData?.session) {
             navigate('/login');
@@ -35,7 +34,17 @@ export default function Dashboard() {
         }
       }
     };
+    
     checkUser();
+
+    // Écouteur en arrière-plan pour intercepter les expirations de token
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate('/login');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleLogout = async () => {
@@ -43,24 +52,36 @@ export default function Dashboard() {
     navigate('/login');
   };
 
+  // 2. APPEL API PROTÉGÉ
   const generateReport = async () => { 
     if (!rawData.trim()) return; 
     setIsLoading(true); 
     setGeneratedText('');
 
     try {
+      // On s'assure d'avoir la session la plus fraîche possible
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      // SÉCURITÉ : Bloquer immédiatement si l'horloge ou la session est en panne
+      if (!token) {
+        throw new Error("Votre session d'authentification est invalide. Veuillez recharger la page.");
+      }
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`, // Jeton garanti valide
         },
-        body: JSON.stringify({ 
-          rawData: rawData 
-        }),
+        body: JSON.stringify({ rawData }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 401) {
+          throw new Error("Votre session a expiré. Veuillez vous reconnecter.");
+        }
+        throw new Error(`Erreur serveur (${response.status}).`);
       }
 
       const data = await response.json();
@@ -69,6 +90,7 @@ export default function Dashboard() {
         throw new Error(data.error);
       }
 
+      // CORRECTION de la syntaxe de l'arbre Gemini (?.[0]?. réintégré)
       if (data && data.text) {
         setGeneratedText(data.text);
       } else if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -80,8 +102,8 @@ export default function Dashboard() {
       }
 
     } catch (error) {
-      console.error("Erreur API Gemini:", error);
-      setGeneratedText("Erreur : Impossible de contacter l'IA. Veuillez réessayer.");
+      console.error("Erreur API:", error);
+      setGeneratedText(error.message || "Erreur : Impossible de contacter l'IA. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -137,7 +159,7 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="bg-slate-900 rounded shadow-lg p-8 text-white">
+          <div className="bg-slate-900 rounded shadow-lg p-8 text-white whitespace-pre-wrap">
             {generatedText ? <p className="text-sm leading-relaxed">{generatedText}</p> : <p className="text-gray-500 italic">En attente...</p>}
           </div>
         </div>
