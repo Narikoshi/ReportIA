@@ -1,7 +1,7 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/generative-ai';
 
-// Récupération de la clé injectée automatiquement par Vercel
-const genAI = new GoogleGenerativeAI(process.env.VITE_AI_API_KEY);
+// Initialisation moderne conforme aux dernières normes du SDK
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,8 +15,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Utilisation du modèle de texte rapide recommandé
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Utilisation du modèle standard et ultra-rapide
+    const model = ai.models.get('gemini-2.5-flash');
 
     const prompt = `Tu es un expert en analyse de données marketing et business nommé ReportAI. 
 Analyse les données brutes suivantes et fais-en une synthèse claire, structurée et actionnable.
@@ -25,16 +25,27 @@ Tu dois impérativement adopter un ton ${tone}.
 Données brutes à analyser :
 "${rawData}"`;
 
-    // Appel au SDK Google
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const aiText = response.text(); // Méthode native pour extraire proprement la chaîne de caractères
+    // Appel direct et asynchrone
+    const response = await model.generateContent({
+      contents: prompt
+    });
 
-    // Renvoi du résultat au format attendu par le bouton "Synthèse Magique"
+    // Extraction directe de la propriété text (ce n'est plus une fonction)
+    const aiText = response.text;
+
+    if (!aiText) {
+      throw new Error("Le modèle n'a renvoyé aucun texte.");
+    }
+
     return res.status(200).json({ result: aiText });
 
   } catch (error) {
-    console.error("Erreur d'exécution API Gemini:", error);
-    return res.status(500).json({ error: "L'IA n'a pas pu traiter votre demande. Vérifiez la clé API." });
+    // Ce log apparaîtra dans l'onglet "Logs" de votre tableau de bord Vercel
+    console.error("Crash de la fonction Gemini:", error.message || error);
+    
+    return res.status(500).json({ 
+      error: "Erreur interne du serveur lors de la génération",
+      details: error.message 
+    });
   }
 }
