@@ -5,18 +5,18 @@ import { supabase } from '../supabaseClient';
 export default function Dashboard() {
   const navigate = useNavigate();
   const [rawData, setRawData] = useState('');
+  const [tone, setTone] = useState('Rassurant'); // 🌟 État pour stocker le ton choisi
   const [generatedText, setGeneratedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
 
-  // 1. GESTION ROBUSTE DE LA SESSION
+  // 1. GESTION DE LA SESSION
   useEffect(() => {
     const checkUser = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error || !session) {
-          // Tentative de secours automatique
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError || !refreshData?.session) {
             return navigate('/login');
@@ -37,7 +37,6 @@ export default function Dashboard() {
     
     checkUser();
 
-    // Écouteur en arrière-plan pour intercepter les expirations de token
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
         navigate('/login');
@@ -59,11 +58,9 @@ export default function Dashboard() {
     setGeneratedText('');
 
     try {
-      // On s'assure d'avoir la session la plus fraîche possible
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      // SÉCURITÉ : Bloquer immédiatement si l'horloge ou la session est en panne
       if (!token) {
         throw new Error("Votre session d'authentification est invalide. Veuillez recharger la page.");
       }
@@ -72,9 +69,12 @@ export default function Dashboard() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Jeton garanti valide
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ rawData }),
+        body: JSON.stringify({ 
+          rawData: rawData,
+          tone: tone // 🌟 Envoi dynamique du ton sélectionné au serveur
+        }),
       });
 
       if (!response.ok) {
@@ -90,8 +90,10 @@ export default function Dashboard() {
         throw new Error(data.error);
       }
 
-      // CORRECTION de la syntaxe de l'arbre Gemini (?.[0]?. réintégré)
-      if (data && data.text) {
+      // 🌟 Extraction résiliente incluant la clé 'result' de votre backend simulation
+      if (data && data.result) {
+        setGeneratedText(data.result);
+      } else if (data && data.text) {
         setGeneratedText(data.text);
       } else if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
         setGeneratedText(data.candidates[0].content.parts[0].text);
@@ -142,8 +144,12 @@ export default function Dashboard() {
             {/* OPTIONS PREMIUM */}
             <div>
               <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Ton du message</label>
-              <select className="w-full border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#C5A880] rounded">
-                <option>Rassurant</option>
+              <select 
+                value={tone}
+                onChange={(e) => setTone(e.target.value)} // 🌟 Changement d'état sur sélection
+                className="w-full border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#C5A880] rounded"
+              >
+                <option value="Rassurant">Rassurant</option>
                 <option disabled>Direct 🔒</option>
                 <option disabled>Enthousiaste 🔒</option>
               </select>
