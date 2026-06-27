@@ -1,51 +1,50 @@
-import { GoogleGenAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialisation moderne conforme aux dernières normes du SDK
-const ai = new GoogleGenAI({ apiKey: process.env.VITE_AI_API_KEY });
+// Sécurité : On vérifie que la clé est présente avant d'initialiser
+const apiKey = process.env.GEMINI_API_KEY;
+const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 export default async function handler(req, res) {
+  // Gestion du pré-vol CORS obligatoire pour Vercel Functions
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Méthode non autorisée' });
+    return res.status(405).json({ error: 'Méthode non autorisée. Utilisez POST.' });
   }
 
   const { rawData, tone = 'Rassurant' } = req.body;
 
   if (!rawData || !rawData.trim()) {
-    return res.status(400).json({ error: 'Les données brutes (rawData) sont obligatoires' });
+    return res.status(400).json({ error: 'Les données brutes (rawData) sont obligatoires.' });
+  }
+
+  if (!genAI) {
+    return res.status(500).json({ error: "Configuration manquante : La clé GEMINI_API_KEY n'est pas configurée sur Vercel." });
   }
 
   try {
-    // Utilisation du modèle standard et ultra-rapide
-    const model = ai.models.get('gemini-2.5-flash');
+    // Utilisation du modèle flash stable
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const prompt = `Tu es un expert en analyse de données marketing et business nommé ReportAI. 
-Analyse les données brutes suivantes et fais-en une synthèse claire, structurée et actionnable.
-Tu dois impérativement adopter un ton ${tone}.
+    const prompt = `Tu es un expert en analyse de données marketing nommé ReportAI. 
+Analyse les données brutes suivantes et fais-en une synthèse claire et actionnable.
+Adopte un ton ${tone}.
 
-Données brutes à analyser :
-"${rawData}"`;
+Données : "${rawData}"`;
 
-    // Appel direct et asynchrone
-    const response = await model.generateContent({
-      contents: prompt
-    });
-
-    // Extraction directe de la propriété text (ce n'est plus une fonction)
-    const aiText = response.text;
-
-    if (!aiText) {
-      throw new Error("Le modèle n'a renvoyé aucun texte.");
-    }
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const aiText = response.text();
 
     return res.status(200).json({ result: aiText });
 
   } catch (error) {
-    // Ce log apparaîtra dans l'onglet "Logs" de votre tableau de bord Vercel
-    console.error("Crash de la fonction Gemini:", error.message || error);
-    
+    console.error("Erreur d'exécution Gemini:", error);
     return res.status(500).json({ 
-      error: "Erreur interne du serveur lors de la génération",
-      details: error.message 
+      error: "L'IA a rencontré une erreur lors de la génération.",
+      details: error.message || error 
     });
   }
 }
