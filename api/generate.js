@@ -27,24 +27,19 @@ export default async function handler(req, res) {
   try {
     // Utilisation du modèle flash stable
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    
+    // Définition correcte du prompt
+    const prompt = `Analyse les données brutes suivantes et fais-en une synthèse claire et actionnable. Adopte un ton ${tone}.\nDonnées : "${rawData}"`;
 
-    const prompt = `Tu es un expert en analyse de données marketing nommé ReportAI. 
-Analyse les données brutes suivantes et fais-en une synthèse claire et actionnable.
-Adopte un ton ${tone}.
-
-Données : "${rawData}"`;
-
+    // Appel effectif à l'API Gemini
     const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const aiText = response.text();
+    const responseText = result.response.text();
 
-    return res.status(200).json({ result: aiText });
-
+    // Retour de la réponse HTTP 200 en cas de succès
+    return res.status(200).json({ result: responseText });
+    
   } catch (error) {
     console.error("Erreur d'exécution Gemini:", error);
-    return res.status(500).json({ 
-      error: "L'IA a rencontré une erreur lors de la génération.",
-      details: error.message || error 
-    });
+    return res.status(500).json({ error: "L'IA a rencontré une erreur lors de la génération.", details: error.message || error });
   }
 }
