@@ -23,15 +23,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
-    const prompt = `Analyse les données brutes suivantes et fais-en une synthèse claire et actionnable. Adopte un ton ${tone}.\nDonnées : "${rawData}"`;
-    
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  
+  // 1. Appeler l'API Gemini
+  const prompt = `Génère un contenu avec un ton ${tone} basé sur ces données : ${rawData}`;
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
 
-    return res.status(200).json({ result: responseText });
-    
+  // 2. Renvoyer une réponse HTTP 200 au frontend
+  return res.status(200).json({ success: true, text: text });
+  
   } catch (error) {
     console.error("Erreur d'exécution Gemini:", error);
     return res.status(500).json({ error: "L'IA a rencontré une erreur lors de la génération.", details: error.message || error });
