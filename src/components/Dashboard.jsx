@@ -14,7 +14,7 @@ export default function Dashboard() {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        // Résolution du bug de Clock Skew si l'horloge de l'appareil est désynchronisée
+        // Interception et correction du bug de Clock Skew (horloge décalée dans le futur)
         if (error && error.message.includes('future')) {
           const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError || !refreshData?.session) {
@@ -24,7 +24,7 @@ export default function Dashboard() {
           navigate('/login');
         }
       } catch (err) {
-        console.error("Erreur de session Supabase (Clock Skew):", err);
+        console.error("Erreur de synchronisation de session (Clock Skew):", err);
         navigate('/login');
       }
     };
@@ -62,7 +62,7 @@ export default function Dashboard() {
         throw new Error(data.error);
       }
 
-      // Extraction propre et sécurisée pour éviter l'erreur de structure inattendue (404/Object)
+      // Extraction sécurisée de la réponse textuelle de l'API Gemini
       if (data && data.text) {
         setGeneratedText(data.text);
       } else if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
