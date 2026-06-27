@@ -22,15 +22,34 @@ export default async function handler(req, res) {
   } 
   
   try { 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }); 
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }); // Utilisez 1.5-flash ou 2.5-flash selon votre version
     
-    // 1. Appeler l'API Gemini (Correction des backticks appliquée ici)
-    const prompt = `Génère un contenu avec un ton ${tone} basé sur ces données : ${rawData}`;
+    // Le nouveau prompt métier
+    const prompt = `Tu es un Account Manager Senior dans une agence de marketing digital haut de gamme. Ta mission est de traduire des données techniques brutes (SEO/SEA) en un rapport ultra-vulgarisé, structuré et orienté 'business' pour ton client (artisan ou gérant de PME).
+
+RÈGLES ABSOLUES :
+- Ne parle jamais de 'notre agence' ou 'notre CA'. Parle au client de SES résultats (ex: 'votre rentabilité', 'vos campagnes').
+- BANNIS LE JARGON (Zéro mention de CPC, CTR, ROAS, Backlinks). Traduis tout en langage clair (ex: budget, visites, coût par visiteur, rentabilité).
+- Utilise le ton : ${tone}.
+
+FORMAT DE SORTIE STRICT IMPOSÉ :
+Tu dois formater ta réponse exactement avec ces 3 titres (inclus les emojis) et faire des phrases très courtes. Mets les chiffres importants en gras avec des doubles astérisques (**chiffre**). Ne dis pas "Bonjour" et ne rajoute aucune phrase d'introduction ou de conclusion.
+
+💰 1. INVESTISSEMENT & RENTABILITÉ
+[1 à 2 phrases maximum expliquant clairement ce que le client a dépensé et ce que ça lui a rapporté de manière simple]
+
+👁️ 2. TRAFIC & VISIBILITÉ
+[1 à 2 phrases maximum expliquant l'évolution de son audience ou de l'intérêt pour ses publicités]
+
+🚀 3. PLAN D'ACTION
+[1 phrase rassurante expliquant l'action concrète que l'agence va mettre en place cette semaine pour améliorer ou consolider ces résultats. Invente une action logique si les données n'en fournissent pas]
+
+Voici les données brutes à analyser :
+${rawData}`;
     
     const result = await model.generateContent(prompt); 
     const text = result.response.text(); 
     
-    // 2. Renvoyer une réponse HTTP 200 au frontend 
     return res.status(200).json({ success: true, text: text });
     
   } catch (error) { 
