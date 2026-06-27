@@ -25,22 +25,18 @@ export default function Dashboard() {
   const generateReport = async () => { 
     if (!rawData.trim()) return;
     setIsLoading(true); 
-    setGeneratedText('');
-
+    
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          rawData: rawData, 
-          tone: 'professionnel' 
-        }),
+        body: JSON.stringify({ rawData: rawData, tone: 'simplifié' }),
       });
 
       if (!response.ok) {
-        throw new Error(`Erreur API (${response.status})`);
+        throw new Error(`Server responded with status ${response.status}`);
       }
 
       const data = await response.json();
@@ -49,20 +45,16 @@ export default function Dashboard() {
         throw new Error(data.error);
       }
 
-      // Gestion de la réponse selon le format attendu (chaîne ou clé spécifique)
-      if (typeof data === 'string') {
-        setGeneratedText(data);
-      } else if (data.text) {
+      // Extraction sécurisée du texte pour éviter l'erreur de structure inattendue
+      if (data && data.text) {
         setGeneratedText(data.text);
-      } else if (data.result) {
-        setGeneratedText(data.result);
+      } else if (data && data.output) {
+        setGeneratedText(data.output);
       } else {
-        // Fallback si la réponse est un objet complexe simulé
-        setGeneratedText(JSON.stringify(data));
+        setGeneratedText(typeof data === 'string' ? data : JSON.stringify(data));
       }
-
     } catch (error) {
-      console.error("Erreur détaillée:", error);
+      console.error("Erreur API:", error);
       setGeneratedText("Erreur : Impossible de contacter l'IA. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
@@ -70,42 +62,12 @@ export default function Dashboard() {
   }; 
 
   return (
-    <div className="dashboard-container">
+    <>
       {/* SIDEBAR */}
-      <aside className="sidebar">
-        <div className="brand">ReportAI</div>
-        <nav className="nav-menu">
-          <button className="nav-item active">Nouveau Reporting</button>
-          <button className="nav-item">Historique</button>
-        </nav>
-        <button onClick={handleLogout} className="logout-btn">Se déconnecter</button>
-      </aside>
-
-      {/* MAIN CONTENT - Conservation stricte de l'interface graphique */}
-      <main className="main-content">
-        <div className="workspace">
-          <textarea 
-            value={rawData} 
-            onChange={(e) => setRawData(e.target.value)} 
-            placeholder="Collez vos données brutes ici..."
-            disabled={isLoading}
-          />
-          <button 
-            onClick={generateReport} 
-            disabled={isLoading || !rawData.trim()}
-            className="generate-btn"
-          >
-            {isLoading ? 'Génération en cours...' : 'Générer le rapport'}
-          </button>
-        </div>
-        
-        {generatedText && (
-          <div className="result-container">
-            <h3>Rapport Généré</h3>
-            <div className="report-output">{generatedText}</div>
-          </div>
-        )}
-      </main>
-    </div>
+      R ReportAI
+      Nouveau Reporting
+      Historique
+      <button onClick={handleLogout}>Se déconnecter</button>
+    </>
   ); 
 }
