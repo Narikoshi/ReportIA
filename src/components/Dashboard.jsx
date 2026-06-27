@@ -53,64 +53,35 @@ export default function Dashboard() {
 
   // 2. APPEL API PROTÉGÉ
   const generateReport = async () => { 
-    if (!rawData.trim()) return; 
-    setIsLoading(true); 
-    setGeneratedText('');
+  if (!rawData.trim()) return; 
+  
+  setIsLoading(true); 
+  setGeneratedText(''); 
+  
+  try {
+    const response = await fetch('/api/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ rawData, tone }),
+    });
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+    const data = await response.json();
 
-      if (!token) {
-        throw new Error("Votre session d'authentification est invalide. Veuillez recharger la page.");
-      }
-
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          rawData: rawData,
-          tone: tone // 🌟 Envoi dynamique du ton sélectionné au serveur
-        }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Votre session a expiré. Veuillez vous reconnecter.");
-        }
-        throw new Error(`Erreur serveur (${response.status}).`);
-      }
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // 🌟 Extraction résiliente incluant la clé 'result' de votre backend simulation
-      if (data && data.result) {
-        setGeneratedText(data.result);
-      } else if (data && data.text) {
-        setGeneratedText(data.text);
-      } else if (data && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        setGeneratedText(data.candidates[0].content.parts[0].text);
-      } else if (data && data.output) {
-        setGeneratedText(data.output);
-      } else {
-        setGeneratedText(typeof data === 'string' ? data : JSON.stringify(data));
-      }
-
-    } catch (error) {
-      console.error("Erreur API:", error);
-      setGeneratedText(error.message || "Erreur : Impossible de contacter l'IA. Veuillez réessayer.");
-    } finally {
-      setIsLoading(false);
+    if (!response.ok) {
+      throw new Error(data.error || 'Erreur lors de la génération');
     }
-  };
 
+    setGeneratedText(data.result);
+  } catch (error) {
+    console.error("Erreur Fetch:", error);
+    setGeneratedText(`Erreur : ${error.message}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
+  
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex font-sans text-[#1A1F26]">
       {/* SIDEBAR */}
