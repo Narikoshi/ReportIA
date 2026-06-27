@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Récupération de la clé injectée automatiquement par Vercel
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.VITE_AI_API_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
