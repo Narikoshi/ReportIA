@@ -19,7 +19,6 @@ const parseGeneratedText = (text) => {
   if (!text) return { isParsed: false };
   
   try {
-    // Regex pour récupérer le contenu de chaque section
     const rentabiliteMatch = text.match(/💰.*?RENTABILITÉ[^\n]*\n([\s\S]*?)(?=👁️|$)/i);
     const traficMatch = text.match(/👁️.*?VISIBILITÉ[^\n]*\n([\s\S]*?)(?=🚀|$)/i);
     const actionMatch = text.match(/🚀.*?PLAN D'ACTION[^\n]*\n([\s\S]*?)$/i);
@@ -37,14 +36,19 @@ const parseGeneratedText = (text) => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('new'); // 'new' ou 'history'
   const [rawData, setRawData] = useState('');
   const [tone, setTone] = useState('Rassurant');
   const [generatedText, setGeneratedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+  
+  // États pour l'historique
+  const [history, setHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
 
   useEffect(() => {
-    // [VOTRE LOGIQUE SUPABASE EXISTANTE RESTÉE INTACTE]
     const checkUser = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -63,6 +67,36 @@ export default function Dashboard() {
     });
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Récupérer l'historique depuis Supabase
+  const fetchHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('reports')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setHistory(data || []);
+    } catch (error) {
+      console.error("Erreur lors de la récupération de l'historique:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Charger l'historique dès que l'utilisateur clique sur l'onglet correspondant
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchHistory();
+      setSelectedHistoryItem(null); // Reset la vue détaillée
+    }
+  }, [activeTab]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -86,6 +120,20 @@ export default function Dashboard() {
       if (!response.ok) throw new Error(data.error || 'Erreur lors de la génération');
       
       setGeneratedText(data.text);
+
+      // Sauvegarde automatique dans l'historique Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.from('reports').insert([
+          {
+            user_id: session.user.id,
+            raw_data: rawData,
+            tone: tone,
+            generated_text: data.text
+          }
+        ]);
+      }
+
     } catch (error) {
       console.error("Erreur Fetch:", error);
       setGeneratedText(`Erreur : ${error.message}`);
@@ -94,12 +142,13 @@ export default function Dashboard() {
     }
   };
 
-  // On parse le résultat en temps réel
-  const parsedData = parseGeneratedText(generatedText);
+  // On parse le résultat en temps réel (soit la génération en cours, soit l'élément sélectionné dans l'historique)
+  const textToParse = activeTab === 'history' && selectedHistoryItem ? selectedHistoryItem.generated_text : generatedText;
+  const parsedData = parseGeneratedText(textToParse);
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex font-sans text-[#1A1F26]">
-      {/* SIDEBAR INTACTE */}
+      {/* SIDEBAR */}
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between p-6">
         <div>
           <div className="flex items-center gap-3 mb-10">
@@ -107,8 +156,18 @@ export default function Dashboard() {
             <h1 className="text-sm font-semibold tracking-widest uppercase">ReportAI</h1>
           </div>
           <nav className="space-y-4">
-            <a href="#" className="block text-xs font-bold text-[#C5A880] uppercase tracking-widest">Nouveau Reporting</a>
-            <a href="#" className="block text-xs font-semibold text-gray-400 uppercase tracking-widest hover:text-[#1A1F26] transition-colors">Historique</a>
+            <button 
+              onClick={() => setActiveTab('new')} 
+              className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'new' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}
+            >
+              Nouveau Reporting
+            </button>
+            <button 
+              onClick={() => setActiveTab('history')} 
+              className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'history' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}
+            >
+              Historique
+            </button>
           </nav>
         </div>
         <button onClick={handleLogout} className="text-left text-xs font-bold text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors">Se déconnecter</button>
@@ -116,50 +175,81 @@ export default function Dashboard() {
 
       {/* MAIN */}
       <div className="flex-1 p-10 flex flex-col">
-        <h2 className="text-2xl font-serif text-[#1A1F26] mb-8">Nouveau Reporting</h2>
+        <h2 className="text-2xl font-serif text-[#1A1F26] mb-8">
+          {activeTab === 'new' ? 'Nouveau Reporting' : 'Mon Historique'}
+        </h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
-          {/* COLONNE GAUCHE (INPUT) */}
-          <div className="flex flex-col gap-6">
-            <textarea 
-              value={rawData}
-              onChange={(e) => setRawData(e.target.value)}
-              className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded shadow-sm"
-              placeholder="Collez vos données brutes SEO/SEA ici..."
-            ></textarea>
-            
-            <div>
-              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Ton du message</label>
-              <select 
-                value={tone}
-                onChange={(e) => setTone(e.target.value)}
-                className="w-full border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#C5A880] rounded"
-              >
-                <option value="Rassurant">Rassurant</option>
-                <option disabled>Direct 🔒</option>
-                <option disabled>Enthousiaste 🔒</option>
-              </select>
+          
+          {/* CONDITION UNIQUE SELON L'ONGLET ACTIF */}
+          {activeTab === 'new' ? (
+            /* COLONNE GAUCHE - SCRIPT DE GÉNÉRATION */
+            <div className="flex flex-col gap-6">
+              <textarea 
+                value={rawData}
+                onChange={(e) => setRawData(e.target.value)}
+                className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded shadow-sm"
+                placeholder="Collez vos données brutes SEO/SEA ici..."
+              ></textarea>
+              
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Ton du message</label>
+                <select 
+                  value={tone}
+                  onChange={(e) => setTone(e.target.value)}
+                  className="w-full border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#C5A880] rounded"
+                >
+                  <option value="Rassurant">Rassurant</option>
+                  <option disabled>Direct 🔒</option>
+                  <option disabled>Enthousiaste 🔒</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded">
+                <span className="text-xs font-semibold text-gray-700">Activer la Marque Blanche 🔒</span>
+                <button onClick={() => setIsPremiumModalOpen(true)} className="w-10 h-5 bg-gray-200 rounded-full"></button>
+              </div>
+
+              <button onClick={generateReport} disabled={isLoading} className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors rounded">
+                {isLoading ? "Génération en cours..." : "Générer la synthèse magique ✨"}
+              </button>
             </div>
-
-            <div className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded">
-              <span className="text-xs font-semibold text-gray-700">Activer la Marque Blanche 🔒</span>
-              <button onClick={() => setIsPremiumModalOpen(true)} className="w-10 h-5 bg-gray-200 rounded-full"></button>
+          ) : (
+            /* COLONNE GAUCHE - LISTE DE L'HISTORIQUE */
+            <div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-200px)] pr-2">
+              {isLoadingHistory ? (
+                <p className="text-sm text-gray-400">Chargement de vos anciens rapports...</p>
+              ) : history.length === 0 ? (
+                <p className="text-sm text-gray-400">Aucun rapport généré pour le moment.</p>
+              ) : (
+                history.map((item) => (
+                  <div 
+                    key={item.id}
+                    onClick={() => setSelectedHistoryItem(item)}
+                    className={`p-4 border rounded cursor-pointer transition shadow-sm text-left ${selectedHistoryItem?.id === item.id ? 'border-[#C5A880] bg-white' : 'border-gray-200 bg-white hover:border-gray-400'}`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-gray-100 rounded text-gray-600">{item.tone}</span>
+                      <span className="text-[10px] text-gray-400">{new Date(item.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 line-clamp-2 italic">
+                      "{item.raw_data}"
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
+          )}
 
-            <button onClick={generateReport} disabled={isLoading} className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors rounded">
-              {isLoading ? "Génération en cours..." : "Générer la synthèse magique ✨"}
-            </button>
-          </div>
-
-          {/* COLONNE DROITE (RÉSULTAT FAÇON DÉMO LANDING PAGE) */}
+          {/* COLONNE DROITE (CONSERVÉE POUR LES DEUX : RÉSULTAT DU DASHBOARD EN TEMPS RÉEL OU SÉLECTIONNÉ) */}
           <div className="bg-slate-900 rounded-3xl p-1 shadow-2xl relative w-full h-full transform transition-all duration-300">
-            {generatedText && (
-                <div className="absolute -top-4 -right-2 bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-900 font-black text-[10px] px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider animate-bounce z-10">
-                    Généré par IA ✨
+            {textToParse && (
+                <div className="absolute -top-4 -right-2 bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-900 font-black text-[10px] px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider z-10">
+                    {activeTab === 'new' ? 'Généré par IA ✨' : 'Archive 📁'}
                 </div>
             )}
             
-            <div className="bg-slate-900 rounded-[22px] p-8 text-white h-full flex flex-col">
+            <div className="bg-slate-900 rounded-[22px] p-8 text-white h-full flex flex-col text-left">
               
               {/* En-tête du Dashboard */}
               <div className="flex items-center justify-between mb-8">
@@ -170,19 +260,21 @@ export default function Dashboard() {
                           <p className="text-xs text-slate-400">Le résumé en 15 secondes</p>
                       </div>
                   </div>
-                  {generatedText && <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full font-medium">Brouillon</span>}
+                  {textToParse && <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full font-medium">{activeTab === 'new' ? 'Brouillon' : 'Enregistré'}</span>}
               </div>
 
-              {!generatedText ? (
+              {!textToParse ? (
                 // État vide
                 <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
                     <span className="text-4xl mb-4">🪄</span>
-                    <p className="text-slate-400 text-sm">En attente des données...</p>
+                    <p className="text-slate-400 text-sm">
+                      {activeTab === 'new' ? 'En attente des données...' : 'Sélectionnez un rapport dans l\'historique...'}
+                    </p>
                 </div>
               ) : parsedData.isParsed ? (
                 // État généré et formaté !
                 <>
-                  <div className="space-y-4 mb-6 flex-1 animate-fade-in-up">
+                  <div className="space-y-4 mb-6 flex-1 animate-fade-in-up overflow-y-auto">
                       
                       <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
                           <span className="text-2xl mt-0.5">💰</span>
@@ -214,13 +306,18 @@ export default function Dashboard() {
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                           Statut : Zéro Jargon garanti
                       </span>
-                      <button className="text-slate-300 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">Copier le message</button>
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(textToParse)}
+                        className="text-slate-300 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Copier le message
+                      </button>
                   </div>
                 </>
               ) : (
-                // Fallback de sécurité si l'IA modifie trop la structure
+                // Fallback de sécurité
                 <div className="flex-1 overflow-auto text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-                  {generatedText}
+                  {textToParse}
                 </div>
               )}
             </div>
