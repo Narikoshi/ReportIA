@@ -14,21 +14,34 @@ const formatText = (text) => {
   });
 };
 
-// Fonction pour extraire automatiquement le nom du client depuis les données brutes
+// Fonction améliorée pour extraire automatiquement le nom du client depuis les données brutes
 const extractClientName = (text) => {
   if (!text) return 'Unknown';
   
   const regexes = [
-    /(?:client|société|entreprise|nom|compte)\s*[:=-]\s*([^\n\r,]+)/i,
-    /(?:pour|de)\s+([A-Z][a-zA-Z0-9\s]{2,20})\s*(?:-|:|\n)/,
-    /^[A-Z][a-zA-Z0-9\s]{2,20}$/m
+    // Détecte "Client: Nom", "Société: Nom", "Entreprise: Nom", "Nom du compte: Nom"
+    /(?:client|société|entreprise|nom|compte|account)\s*[:=-]\s*([^\n\r,;|]+)/i,
+    // Détecte "Rapport pour [Nom]", "Audit de [Nom]"
+    /(?:pour|de|for|of)\s+([A-Z][a-zA-Z0-9\s._-]{2,25})\s*(?:-|:|\n|$)/,
+    // Prend la première ligne si elle commence par une majuscule et fait moins de 30 caractères
+    /^[A-Z][a-zA-Z0-9\s._-]{2,25}$/m
   ];
 
   for (let regex of regexes) {
     const match = text.match(regex);
     if (match && match[1]) {
       const name = match[1].trim();
-      if (name.length > 1 && name.length < 50) return name;
+      // Filtre pour éviter de prendre des mots clés génériques du jargon SEO
+      const lowerName = name.toLowerCase();
+      if (
+        name.length > 1 && 
+        name.length < 40 && 
+        !lowerName.includes('http') && 
+        !lowerName.includes('audit') &&
+        !lowerName.includes('rapport')
+      ) {
+        return name;
+      }
     }
   }
 
@@ -60,7 +73,6 @@ export default function Dashboard() {
   const [tone, setTone] = useState('Rassurant');
   const [generatedText, setGeneratedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
   
   // États pour l'historique
   const [history, setHistory] = useState([]);
@@ -127,7 +139,17 @@ export default function Dashboard() {
       
       setGeneratedText(data.text);
 
-      const detectedClient = extractClientName(rawData);
+      // 1. Tente d'extraire depuis les données brutes fournies par l'utilisateur
+      let detectedClient = extractClientName(rawData);
+
+      // 2. Fallback intelligent : Si non trouvé, cherche si l'IA l'a écrit dans sa réponse
+      if (detectedClient === 'Unknown') {
+        const iaClientMatch = data.text.match(/(?:client|pour|société)\s*[:=-]\s*([^\n\r*]+)/i);
+        if (iaClientMatch && iaClientMatch[1]) {
+          detectedClient = iaClientMatch[1].trim();
+        }
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         await supabase.from('reports').insert([
@@ -206,7 +228,7 @@ export default function Dashboard() {
                 value={rawData}
                 onChange={(e) => setRawData(e.target.value)}
                 className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded shadow-sm"
-                placeholder="Collez vos données brutes SEO/SEA ici... Exemple: Ajoutez la ligne 'Client: NomDuClient' pour l'extraction automatique !"
+                placeholder="Collez vos données brutes SEO/SEA ici... Conseil : incluez une ligne comme 'Client: NomDuClient' en haut pour faciliter la détection !"
               ></textarea>
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Ton du message</label>
