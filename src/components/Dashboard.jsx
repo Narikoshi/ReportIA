@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 
-// Fonction pour mettre en gras le texte entouré de ** (Markdown généré par Gemini)
+// Fonction pour mettre en gras le texte entouré de **
 const formatText = (text) => {
   if (!text) return null;
   const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -14,10 +14,32 @@ const formatText = (text) => {
   });
 };
 
-// Fonction pour parser intelligemment la réponse stricte de l'IA
+// Fonction pour extraire automatiquement le nom du client depuis les données brutes
+const extractClientName = (text) => {
+  if (!text) return 'Unknown';
+  
+  // Liste de patterns courants (ex: "Client: Nike", "Société: Total", "Rapport pour Google")
+  const regexes = [
+    /(?:client|société|entreprise|nom|compte)\s*[:=-]\s*([^\n\r,]+)/i,
+    (?:pour|de)\s+([A-Z][a-zA-Z0-9\s]{2,20})\s*(?:-|:|\n)/,
+    /^[A-Z][a-zA-Z0-9\s]{2,20}$/m // Première ligne si elle ressemble à un nom de marque
+  ];
+
+  for (let regex of regexes) {
+    const match = text.match(regex);
+    if (match && match[1]) {
+      const name = match[1].trim();
+      // Nettoyer un peu le résultat au cas où
+      if (name.length > 1 && name.length < 50) return name;
+    }
+  }
+
+  return 'Unknown';
+};
+
+// Fonction pour parser la réponse de l'IA
 const parseGeneratedText = (text) => {
   if (!text) return { isParsed: false };
-  
   try {
     const rentabiliteMatch = text.match(/💰.*?RENTABILITÉ[^\n]*\n([\s\S]*?)(?=👁️|$)/i);
     const traficMatch = text.match(/👁️.*?VISIBILITÉ[^\n]*\n([\s\S]*?)(?=🚀|$)/i);
@@ -27,8 +49,7 @@ const parseGeneratedText = (text) => {
     const trafic = traficMatch ? traficMatch[1].trim() : '';
     const action = actionMatch ? actionMatch[1].trim() : '';
 
-    const isParsed = !!(rentabilite && trafic && action);
-    return { rentabilite, trafic, action, isParsed, raw: text };
+    return { rentabilite, trafic, action, isParsed: !!(rentabilite && trafic && action), raw: text };
   } catch (e) {
     return { isParsed: false, raw: text };
   }
@@ -36,7 +57,7 @@ const parseGeneratedText = (text) => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('new'); // 'new' ou 'history'
+  const [activeTab, setActiveTab] = useState('new');
   const [rawData, setRawData] = useState('');
   const [tone, setTone] = useState('Rassurant');
   const [generatedText, setGeneratedText] = useState('');
@@ -60,15 +81,9 @@ export default function Dashboard() {
         navigate('/login');
       }
     };
-    
     checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) navigate('/login');
-    });
-    return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Récupérer l'historique depuis Supabase
   const fetchHistory = async () => {
     setIsLoadingHistory(true);
     try {
@@ -84,28 +99,21 @@ export default function Dashboard() {
       if (error) throw error;
       setHistory(data || []);
     } catch (error) {
-      console.error("Erreur lors de la récupération de l'historique:", error);
+      console.error(error);
     } finally {
       setIsLoadingHistory(false);
     }
   };
 
-  // Charger l'historique dès que l'utilisateur clique sur l'onglet correspondant
   useEffect(() => {
     if (activeTab === 'history') {
       fetchHistory();
-      setSelectedHistoryItem(null); // Reset la vue détaillée
+      setSelectedHistoryItem(null);
     }
   }, [activeTab]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
-
   const generateReport = async () => { 
     if (!rawData.trim()) return; 
-    
     setIsLoading(true); 
     setGeneratedText(''); 
     
@@ -121,7 +129,9 @@ export default function Dashboard() {
       
       setGeneratedText(data.text);
 
-      // Sauvegarde automatique dans l'historique Supabase
+      // Extraction automatique du nom du client avant la sauvegarde
+      const detectedClient = extractClientName(rawData);
+
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         await supabase.from('reports').insert([
@@ -129,20 +139,43 @@ export default function Dashboard() {
             user_id: session.user.id,
             raw_data: rawData,
             tone: tone,
-            generated_text: data.text
+            generated_text: data.text,
+            client_name: detectedClient // Sauvegarde automatique !
           }
         ]);
       }
-
     } catch (error) {
-      console.error("Erreur Fetch:", error);
       setGeneratedText(`Erreur : ${error.message}`);
-    } finally {
+    } days {
       setIsLoading(false);
     }
   };
 
-  // On parse le résultat en temps réel (soit la génération en cours, soit l'élément sélectionné dans l'historique)
+  // Option pour modifier manuellement le nom du client
+  const handleEditClientName = async (e, item) => {
+    e.stopPropagation(); // Évite de sélectionner le rapport lors du clic sur le bouton
+    const newName = prompt("Entrez le nouveau nom du client :", item.client_name);
+    
+    if (newName === null || newName.trim() === "") return;
+
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({ client_name: newName.trim() })
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      // Mettre à jour l'état local pour rafraîchir l'affichage instantanément
+      setHistory(history.map(h => h.id === item.id ? { ...h, client_name: newName.trim() } : h));
+      if (selectedHistoryItem?.id === item.id) {
+        setSelectedHistoryItem({ ...selectedHistoryItem, client_name: newName.trim() });
+      }
+    } catch (error) {
+      alert("Erreur lors de la modification du nom.");
+    }
+  };
+
   const textToParse = activeTab === 'history' && selectedHistoryItem ? selectedHistoryItem.generated_text : generatedText;
   const parsedData = parseGeneratedText(textToParse);
 
@@ -156,83 +189,74 @@ export default function Dashboard() {
             <h1 className="text-sm font-semibold tracking-widest uppercase">ReportAI</h1>
           </div>
           <nav className="space-y-4">
-            <button 
-              onClick={() => setActiveTab('new')} 
-              className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'new' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}
-            >
+            <button onClick={() => setActiveTab('new')} className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'new' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}>
               Nouveau Reporting
             </button>
-            <button 
-              onClick={() => setActiveTab('history')} 
-              className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'history' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}
-            >
+            <button onClick={() => setActiveTab('history')} className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'history' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}>
               Historique
             </button>
           </nav>
         </div>
-        <button onClick={handleLogout} className="text-left text-xs font-bold text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors">Se déconnecter</button>
+        <button onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }} className="text-left text-xs font-bold text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors">Se déconnecter</button>
       </div>
 
       {/* MAIN */}
       <div className="flex-1 p-10 flex flex-col">
-        <h2 className="text-2xl font-serif text-[#1A1F26] mb-8">
+        <h2 className="text-2xl font-serif text-[#1A1F26] mb-8 text-left">
           {activeTab === 'new' ? 'Nouveau Reporting' : 'Mon Historique'}
         </h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
-          
-          {/* CONDITION UNIQUE SELON L'ONGLET ACTIF */}
           {activeTab === 'new' ? (
-            /* COLONNE GAUCHE - SCRIPT DE GÉNÉRATION */
+            /* ONGLER CRÉATION */
             <div className="flex flex-col gap-6">
               <textarea 
                 value={rawData}
                 onChange={(e) => setRawData(e.target.value)}
                 className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded shadow-sm"
-                placeholder="Collez vos données brutes SEO/SEA ici..."
+                placeholder="Collez vos données brutes SEO/SEA ici... Conseil: Ajoutez une ligne 'Client: NomDuClient' pour que l'historique le détecte !"
               ></textarea>
-              
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Ton du message</label>
-                <select 
-                  value={tone}
-                  onChange={(e) => setTone(e.target.value)}
-                  className="w-full border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#C5A880] rounded"
-                >
+                <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#C5A880] rounded">
                   <option value="Rassurant">Rassurant</option>
-                  <option disabled>Direct 🔒</option>
-                  <option disabled>Enthousiaste 🔒</option>
                 </select>
               </div>
-
-              <div className="flex items-center justify-between bg-white p-4 border border-gray-200 rounded">
-                <span className="text-xs font-semibold text-gray-700">Activer la Marque Blanche 🔒</span>
-                <button onClick={() => setIsPremiumModalOpen(true)} className="w-10 h-5 bg-gray-200 rounded-full"></button>
-              </div>
-
               <button onClick={generateReport} disabled={isLoading} className="w-full bg-[#1A1F26] text-[#FDFBF7] py-4 text-xs font-semibold uppercase tracking-widest hover:bg-[#C5A880] transition-colors rounded">
                 {isLoading ? "Génération en cours..." : "Générer la synthèse magique ✨"}
               </button>
             </div>
           ) : (
-            /* COLONNE GAUCHE - LISTE DE L'HISTORIQUE */
+            /* ONGLET LISTE HISTORIQUE */
             <div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-200px)] pr-2">
               {isLoadingHistory ? (
-                <p className="text-sm text-gray-400">Chargement de vos anciens rapports...</p>
+                <p className="text-sm text-gray-400 text-left">Chargement...</p>
               ) : history.length === 0 ? (
-                <p className="text-sm text-gray-400">Aucun rapport généré pour le moment.</p>
+                <p className="text-sm text-gray-400 text-left">Aucun rapport généré.</p>
               ) : (
                 history.map((item) => (
                   <div 
                     key={item.id}
                     onClick={() => setSelectedHistoryItem(item)}
-                    className={`p-4 border rounded cursor-pointer transition shadow-sm text-left ${selectedHistoryItem?.id === item.id ? 'border-[#C5A880] bg-white' : 'border-gray-200 bg-white hover:border-gray-400'}`}
+                    className={`p-4 border rounded cursor-pointer transition shadow-sm text-left relative ${selectedHistoryItem?.id === item.id ? 'border-[#C5A880] bg-white' : 'border-gray-200 bg-white hover:border-gray-400'}`}
                   >
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-gray-100 rounded text-gray-600">{item.tone}</span>
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        {/* Affichage bien visible du Nom du Client */}
+                        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                          👤 {item.client_name || 'Unknown'}
+                          <button 
+                            onClick={(e) => handleEditClientName(e, item)} 
+                            className="text-[10px] font-normal text-blue-500 hover:underline bg-blue-50 px-1.5 py-0.5 rounded transition"
+                          >
+                            Modifier
+                          </button>
+                        </h4>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 mt-1 inline-block">{item.tone}</span>
+                      </div>
                       <span className="text-[10px] text-gray-400">{new Date(item.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</span>
                     </div>
-                    <p className="text-xs text-gray-600 line-clamp-2 italic">
+                    <p className="text-xs text-gray-500 line-clamp-1 italic mt-1">
                       "{item.raw_data}"
                     </p>
                   </div>
@@ -241,30 +265,26 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* COLONNE DROITE (CONSERVÉE POUR LES DEUX : RÉSULTAT DU DASHBOARD EN TEMPS RÉEL OU SÉLECTIONNÉ) */}
-          <div className="bg-slate-900 rounded-3xl p-1 shadow-2xl relative w-full h-full transform transition-all duration-300">
+          {/* RENDU DROITE */}
+          <div className="bg-slate-900 rounded-3xl p-1 shadow-2xl relative w-full h-full">
             {textToParse && (
                 <div className="absolute -top-4 -right-2 bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-900 font-black text-[10px] px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider z-10">
-                    {activeTab === 'new' ? 'Généré par IA ✨' : 'Archive 📁'}
+                    {activeTab === 'new' ? 'Généré par IA ✨' : `Client : ${selectedHistoryItem?.client_name || 'Unknown'} 📁`}
                 </div>
             )}
             
             <div className="bg-slate-900 rounded-[22px] p-8 text-white h-full flex flex-col text-left">
-              
-              {/* En-tête du Dashboard */}
               <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-900 text-lg shadow-md shadow-emerald-500/20">🚀</div>
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-900 text-lg">🚀</div>
                       <div>
                           <h4 className="font-bold text-white text-base">Point Météo</h4>
                           <p className="text-xs text-slate-400">Le résumé en 15 secondes</p>
                       </div>
                   </div>
-                  {textToParse && <span className="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full font-medium">{activeTab === 'new' ? 'Brouillon' : 'Enregistré'}</span>}
               </div>
 
               {!textToParse ? (
-                // État vide
                 <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
                     <span className="text-4xl mb-4">🪄</span>
                     <p className="text-slate-400 text-sm">
@@ -272,50 +292,41 @@ export default function Dashboard() {
                     </p>
                 </div>
               ) : parsedData.isParsed ? (
-                // État généré et formaté !
                 <>
-                  <div className="space-y-4 mb-6 flex-1 animate-fade-in-up overflow-y-auto">
-                      
-                      <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
-                          <span className="text-2xl mt-0.5">💰</span>
+                  <div className="space-y-4 mb-6 flex-1 overflow-y-auto">
+                      <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4">
+                          <span className="text-2xl">💰</span>
                           <div>
                               <h5 className="font-semibold text-emerald-400 text-sm mb-0.5">Investissement & Rentabilité</h5>
                               <p className="text-slate-300 text-sm leading-relaxed">{formatText(parsedData.rentabilite)}</p>
                           </div>
                       </div>
-
-                      <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
-                          <span className="text-2xl mt-0.5">👁️</span>
+                      <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4">
+                          <span className="text-2xl">👁️</span>
                           <div>
                               <h5 className="font-semibold text-sky-400 text-sm mb-0.5">Trafic & Visibilité</h5>
                               <p className="text-slate-300 text-sm leading-relaxed">{formatText(parsedData.trafic)}</p>
                           </div>
                       </div>
-
-                      <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition">
-                          <span className="text-2xl mt-0.5">🛠️</span>
+                      <div className="bg-slate-800/60 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4">
+                          <span className="text-2xl">🛠️</span>
                           <div>
                               <h5 className="font-semibold text-amber-400 text-sm mb-0.5">Plan d'Action</h5>
                               <p className="text-slate-300 text-sm leading-relaxed">{formatText(parsedData.action)}</p>
                           </div>
                       </div>
                   </div>
-
                   <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-emerald-400 font-medium mt-auto">
                       <span className="flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                          Statut : Zéro Jargon garanti
+                          Zéro Jargon garanti
                       </span>
-                      <button 
-                        onClick={() => navigator.clipboard.writeText(textToParse)}
-                        className="text-slate-300 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                      >
+                      <button onClick={() => navigator.clipboard.writeText(textToParse)} className="text-slate-300 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors">
                         Copier le message
                       </button>
                   </div>
                 </>
               ) : (
-                // Fallback de sécurité
                 <div className="flex-1 overflow-auto text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
                   {textToParse}
                 </div>
@@ -324,17 +335,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* MODAL */}
-      {isPremiumModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded max-w-sm w-full mx-4 text-center">
-            <h3 className="text-xl font-serif mb-4">Passer au Premium 🚀</h3>
-            <p className="text-sm text-gray-600 mb-8">La marque blanche est réservée au plan Agence.</p>
-            <button onClick={() => setIsPremiumModalOpen(false)} className="w-full bg-[#1A1F26] text-white py-3 text-xs uppercase rounded">Fermer</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
