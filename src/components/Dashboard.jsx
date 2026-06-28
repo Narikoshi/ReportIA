@@ -98,10 +98,9 @@ export default function Dashboard() {
       setHistory(data || []);
     } catch (error) {
       console.error(error);
-    } days {
-      // Juste au cas où, cette fonction n'utilise pas de finally complexe
+    } finally {
+      setIsLoadingHistory(false);
     }
-    setIsLoadingHistory(false);
   };
 
   useEffect(() => {
