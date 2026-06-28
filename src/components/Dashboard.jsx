@@ -267,7 +267,7 @@ export default function Dashboard() {
               </ul>
             </div>
             <div className="flex flex-col gap-2">
-              <button onClick={() => { window.location.href = "https://buy.stripe.com/votre_lien_stripe"; }} className="w-full py-3 text-xs font-bold uppercase tracking-widest text-[#FDFBF7] bg-[#1A1F26] hover:bg-[#C5A880] transition-colors rounded-lg shadow-md">
+              <button onClick={() => { window.location.href = "https://buy.stripe.com/test_8x24gBdvUeBb0Ji0Qg1VK00"; }} className="w-full py-3 text-xs font-bold uppercase tracking-widest text-[#FDFBF7] bg-[#1A1F26] hover:bg-[#C5A880] transition-colors rounded-lg shadow-md">
                 Passer Pro — 19€/mois
               </button>
               <button onClick={() => setShowUpsellModal(false)} className="w-full py-2 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors">Plus tard</button>
