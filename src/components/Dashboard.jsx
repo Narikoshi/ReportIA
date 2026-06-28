@@ -14,16 +14,13 @@ const formatText = (text) => {
   });
 };
 
-// Fonction améliorée pour extraire automatiquement le nom du client depuis les données brutes
+// Fonction pour extraire automatiquement le nom du client depuis les données brutes
 const extractClientName = (text) => {
   if (!text) return 'Unknown';
   
   const regexes = [
-    // Détecte "Client: Nom", "Société: Nom", "Entreprise: Nom", "Nom du compte: Nom"
     /(?:client|société|entreprise|nom|compte|account)\s*[:=-]\s*([^\n\r,;|]+)/i,
-    // Détecte "Rapport pour [Nom]", "Audit de [Nom]"
     /(?:pour|de|for|of)\s+([A-Z][a-zA-Z0-9\s._-]{2,25})\s*(?:-|:|\n|$)/,
-    // Prend la première ligne si elle commence par une majuscule et fait moins de 30 caractères
     /^[A-Z][a-zA-Z0-9\s._-]{2,25}$/m
   ];
 
@@ -31,7 +28,6 @@ const extractClientName = (text) => {
     const match = text.match(regex);
     if (match && match[1]) {
       const name = match[1].trim();
-      // Filtre pour éviter de prendre des mots clés génériques du jargon SEO
       const lowerName = name.toLowerCase();
       if (
         name.length > 1 && 
@@ -79,6 +75,9 @@ export default function Dashboard() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
 
+  // État pour la modale de suppression intégrée
+  const [reportToDelete, setReportToDelete] = useState(null);
+
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -100,7 +99,7 @@ export default function Dashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase
+      const { data, error = null } = await supabase
         .from('reports')
         .select('*')
         .eq('user_id', session.user.id)
@@ -139,10 +138,8 @@ export default function Dashboard() {
       
       setGeneratedText(data.text);
 
-      // 1. Tente d'extraire depuis les données brutes fournies par l'utilisateur
       let detectedClient = extractClientName(rawData);
 
-      // 2. Fallback intelligent : Si non trouvé, cherche si l'IA l'a écrit dans sa réponse
       if (detectedClient === 'Unknown') {
         const iaClientMatch = data.text.match(/(?:client|pour|société)\s*[:=-]\s*([^\n\r*]+)/i);
         if (iaClientMatch && iaClientMatch[1]) {
@@ -191,11 +188,71 @@ export default function Dashboard() {
     }
   };
 
+  // Ouvre la modale intégrée au lieu du window.confirm
+  const triggerDeleteModal = (e, item) => {
+    e.stopPropagation();
+    setReportToDelete(item);
+  };
+
+  const confirmDeleteReport = async () => {
+    if (!reportToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .delete()
+        .eq('id', reportToDelete.id);
+
+      if (error) throw error;
+
+      setHistory(history.filter(h => h.id !== reportToDelete.id));
+      
+      if (selectedHistoryItem?.id === reportToDelete.id) {
+        setSelectedHistoryItem(null);
+      }
+    } catch (error) {
+      alert("Erreur lors de la suppression du rapport.");
+      console.error(error);
+    } finally {
+      setReportToDelete(null); // Ferme la modale
+    }
+  };
+
   const textToParse = activeTab === 'history' && selectedHistoryItem ? selectedHistoryItem.generated_text : generatedText;
   const parsedData = parseGeneratedText(textToParse);
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex font-sans text-[#1A1F26]">
+    <div className="min-h-screen bg-[#FDFBF7] flex font-sans text-[#1A1F26] relative">
+      
+      {/* MODALE DE CONFIRMATION DE SUPPRESSION INTEGRÉE */}
+      {reportToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 text-center animate-scaleUp">
+            <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-xl mx-auto mb-4">
+              ⚠️
+            </div>
+            <h3 className="text-base font-serif font-bold text-gray-900 mb-2"> Supprimer le rapport</h3>
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+              Êtes-vous sûr de vouloir supprimer définitivement le rapport pour <span className="font-semibold text-gray-800">"{reportToDelete.client_name || 'Unknown'}"</span> ? Cette action est irréversible.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button 
+                onClick={() => setReportToDelete(null)}
+                className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors rounded-lg"
+              >
+                Annuler
+              </button>
+              <button 
+                onClick={confirmDeleteReport}
+                className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#FDFBF7] bg-red-500 hover:bg-red-600 transition-colors rounded-lg shadow-sm"
+              >
+                Confirmer la suppression
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SIDEBAR */}
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col justify-between p-6">
         <div>
@@ -266,9 +323,17 @@ export default function Dashboard() {
                         </h4>
                         <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 mt-1 inline-block">{item.tone}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400">{new Date(item.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="text-[10px] text-gray-400">{new Date(item.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</span>
+                        <button 
+                          onClick={(e) => triggerDeleteModal(e, item)} 
+                          className="text-[10px] text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded font-medium transition"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 line-clamp-1 italic mt-1">
+                    <p className="text-xs text-gray-500 line-clamp-1 italic mt-1 pr-12">
                       "{item.raw_data}"
                     </p>
                   </div>
