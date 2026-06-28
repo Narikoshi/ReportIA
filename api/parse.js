@@ -29,14 +29,36 @@ export default async function handler(req, res) {
 
     let extractedText = '';
 
-    // --- LOGIQUE POUR EXCEL ET CSV (gérés tous les deux par XLSX) ---
+    // --- LOGIQUE POUR EXCEL ET CSV ---
     if (fileExtension === 'xlsx' || fileExtension === 'xls' || fileExtension === 'csv') {
-      // XLSX.read sait lire un fichier CSV brut passé sous forme de buffer binaire
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      let workbook;
+      
+      // Si c'est un fichier CSV, on gère proprement les encodages d'Excel (UTF-16 avec BOM "ÿþ")
+      if (fileExtension === 'csv') {
+        let csvContent = '';
+        
+        if (buffer[0] === 0xFF && buffer[1] === 0xFE) {
+          // Détection du format Excel UTF-16 LE (les fameux caractères ÿþ)
+          csvContent = buffer.toString('utf16le');
+        } else if (buffer[0] === 0xFE && buffer[1] === 0xFF) {
+          // Détection UTF-16 BE
+          csvContent = buffer.toString('utf16be');
+        } else {
+          // Format standard (UTF-8 ou ANSI)
+          csvContent = buffer.toString('utf-8');
+        }
+        
+        // On lit le contenu textuel nettoyé
+        workbook = XLSX.read(csvContent, { type: 'string' });
+      } else {
+        // Pour les vrais fichiers Excel binaires (.xlsx, .xls)
+        workbook = XLSX.read(buffer, { type: 'buffer' });
+      }
       
       workbook.SheetNames.forEach((sheetName) => {
         const worksheet = workbook.Sheets[sheetName];
-        extractedText += XLSX.utils.sheet_to_txt(worksheet) + '\n\n';
+        // sheet_to_csv offre un rendu de tableau ultra-propre et lisible pour l'IA
+        extractedText += XLSX.utils.sheet_to_csv(worksheet) + '\n\n';
       });
     } 
     // --- LOGIQUE POUR LES PDF ---
