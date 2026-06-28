@@ -18,18 +18,17 @@ const formatText = (text) => {
 const extractClientName = (text) => {
   if (!text) return 'Unknown';
   
-  // Liste de patterns courants (ex: "Client: Nike", "Société: Total", "Rapport pour Google")
+  // Tableau de Regex parfaitement formaté pour ESBuild et Vite
   const regexes = [
     /(?:client|société|entreprise|nom|compte)\s*[:=-]\s*([^\n\r,]+)/i,
-    (?:pour|de)\s+([A-Z][a-zA-Z0-9\s]{2,20})\s*(?:-|:|\n)/,
-    /^[A-Z][a-zA-Z0-9\s]{2,20}$/m // Première ligne si elle ressemble à un nom de marque
+    /(?:pour|de)\s+([A-Z][a-zA-Z0-9\s]{2,20})\s*(?:-|:|\n)/,
+    /^[A-Z][a-zA-Z0-9\s]{2,20}$/m
   ];
 
   for (let regex of regexes) {
     const match = text.match(regex);
     if (match && match[1]) {
       const name = match[1].trim();
-      // Nettoyer un peu le résultat au cas où
       if (name.length > 1 && name.length < 50) return name;
     }
   }
