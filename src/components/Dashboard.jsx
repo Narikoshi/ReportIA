@@ -19,8 +19,11 @@ const extractClientName = (text) => {
   if (!text) return 'Unknown';
   
   const regexes = [
+    // Détecte "Client: Nom", "Société: Nom", "Entreprise: Nom", "Nom du compte: Nom"
     /(?:client|société|entreprise|nom|compte|account)\s*[:=-]\s*([^\n\r,;|]+)/i,
+    // Détecte "Rapport pour [Nom]", "Audit de [Nom]"
     /(?:pour|de|for|of)\s+([A-Z][a-zA-Z0-9\s._-]{2,25})\s*(?:-|:|\n|$)/,
+    // Prend la première ligne si elle commence par une majuscule et fait moins de 30 caractères
     /^[A-Z][a-zA-Z0-9\s._-]{2,25}$/m
   ];
 
@@ -28,6 +31,7 @@ const extractClientName = (text) => {
     const match = text.match(regex);
     if (match && match[1]) {
       const name = match[1].trim();
+      // Filtre pour éviter de prendre des mots clés génériques du jargon SEO
       const lowerName = name.toLowerCase();
       if (
         name.length > 1 && 
@@ -135,8 +139,10 @@ export default function Dashboard() {
       
       setGeneratedText(data.text);
 
+      // 1. Tente d'extraire depuis les données brutes fournies par l'utilisateur
       let detectedClient = extractClientName(rawData);
 
+      // 2. Fallback intelligent : Si non trouvé, cherche si l'IA l'a écrit dans sa réponse
       if (detectedClient === 'Unknown') {
         const iaClientMatch = data.text.match(/(?:client|pour|société)\s*[:=-]\s*([^\n\r*]+)/i);
         if (iaClientMatch && iaClientMatch[1]) {
@@ -182,31 +188,6 @@ export default function Dashboard() {
       }
     } catch (error) {
       alert("Erreur lors de la modification du nom.");
-    }
-  };
-
-  const handleDeleteReport = async (e, item) => {
-    e.stopPropagation(); // Évite de sélectionner l'élément lors du clic sur Supprimer
-    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le rapport pour "${item.client_name || 'Unknown'}" ?`)) return;
-
-    try {
-      const { error } = await supabase
-        .from('reports')
-        .delete()
-        .eq('id', item.id);
-
-      if (error) throw error;
-
-      // Met à jour l'historique localement en enlevant l'élément supprimé
-      setHistory(history.filter(h => h.id !== item.id));
-      
-      // Si l'élément supprimé était celui affiché à droite, on vide la sélection
-      if (selectedHistoryItem?.id === item.id) {
-        setSelectedHistoryItem(null);
-      }
-    } catch (error) {
-      alert("Erreur lors de la suppression du rapport.");
-      console.error(error);
     }
   };
 
@@ -285,17 +266,9 @@ export default function Dashboard() {
                         </h4>
                         <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 mt-1 inline-block">{item.tone}</span>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className="text-[10px] text-gray-400">{new Date(item.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</span>
-                        <button 
-                          onClick={(e) => handleDeleteReport(e, item)} 
-                          className="text-[10px] text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded font-medium transition"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
+                      <span className="text-[10px] text-gray-400">{new Date(item.created_at).toLocaleDateString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</span>
                     </div>
-                    <p className="text-xs text-gray-500 line-clamp-1 italic mt-1 pr-12">
+                    <p className="text-xs text-gray-500 line-clamp-1 italic mt-1">
                       "{item.raw_data}"
                     </p>
                   </div>
