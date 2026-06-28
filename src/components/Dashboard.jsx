@@ -161,13 +161,35 @@ export default function Dashboard() {
 
     setImportedFileName(file.name);
     setIsLoading(true);
+    setRawData('');
 
-    // Ici se fera l'appel à votre future route API d'extraction de texte (pdf/xlsx)
-    // Pour l'instant, on simule une extraction de texte après 1.5s
-    setTimeout(() => {
-      setRawData(`[Données extraites du fichier : ${file.name}]\n\nClient: Entreprise Exemple\nBudget dépensé: 1450€\nConversions: 42 ventes\nClics SEO: +15%\nMots-clés en hausse: "achat chaussures éco", "boutique mode durable".`);
+    try {
+      // On extrait l'extension pour l'envoyer dans les en-têtes
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+
+      // Envoi du fichier binaire brut pour simplifier le traitement serverless
+      const response = await fetch('/api/parse', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-File-Extension': fileExtension,
+          'X-File-Name': encodeURIComponent(file.name)
+        },
+        body: file
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Erreur lors de l'analyse du fichier");
+
+      // On injecte les données extraites directement dans le textarea
+      setRawData(data.text);
+    } catch (error) {
+      console.error("Erreur d'importation :", error);
+      alert(`Impossible d'analyser le fichier : ${error.message}`);
+      setImportedFileName('');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleEditClientName = async (e, item) => {
