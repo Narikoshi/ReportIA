@@ -18,7 +18,6 @@ const formatText = (text) => {
 const extractClientName = (text) => {
   if (!text) return 'Unknown';
   
-  // Tableau de Regex parfaitement formaté pour ESBuild et Vite
   const regexes = [
     /(?:client|société|entreprise|nom|compte)\s*[:=-]\s*([^\n\r,]+)/i,
     /(?:pour|de)\s+([A-Z][a-zA-Z0-9\s]{2,20})\s*(?:-|:|\n)/,
@@ -99,9 +98,10 @@ export default function Dashboard() {
       setHistory(data || []);
     } catch (error) {
       console.error(error);
-    } finally {
-      setIsLoadingHistory(false);
+    } days {
+      // Juste au cas où, cette fonction n'utilise pas de finally complexe
     }
+    setIsLoadingHistory(false);
   };
 
   useEffect(() => {
@@ -128,9 +128,7 @@ export default function Dashboard() {
       
       setGeneratedText(data.text);
 
-      // Extraction automatique du nom du client avant la sauvegarde
       const detectedClient = extractClientName(rawData);
-
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         await supabase.from('reports').insert([
@@ -139,22 +137,20 @@ export default function Dashboard() {
             raw_data: rawData,
             tone: tone,
             generated_text: data.text,
-            client_name: detectedClient // Sauvegarde automatique !
+            client_name: detectedClient
           }
         ]);
       }
     } catch (error) {
       setGeneratedText(`Erreur : ${error.message}`);
-    } days {
+    } finally {
       setIsLoading(false);
     }
   };
 
-  // Option pour modifier manuellement le nom du client
   const handleEditClientName = async (e, item) => {
-    e.stopPropagation(); // Évite de sélectionner le rapport lors du clic sur le bouton
+    e.stopPropagation();
     const newName = prompt("Entrez le nouveau nom du client :", item.client_name);
-    
     if (newName === null || newName.trim() === "") return;
 
     try {
@@ -165,7 +161,6 @@ export default function Dashboard() {
 
       if (error) throw error;
 
-      // Mettre à jour l'état local pour rafraîchir l'affichage instantanément
       setHistory(history.map(h => h.id === item.id ? { ...h, client_name: newName.trim() } : h));
       if (selectedHistoryItem?.id === item.id) {
         setSelectedHistoryItem({ ...selectedHistoryItem, client_name: newName.trim() });
@@ -207,13 +202,12 @@ export default function Dashboard() {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
           {activeTab === 'new' ? (
-            /* ONGLER CRÉATION */
             <div className="flex flex-col gap-6">
               <textarea 
                 value={rawData}
                 onChange={(e) => setRawData(e.target.value)}
                 className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded shadow-sm"
-                placeholder="Collez vos données brutes SEO/SEA ici... Conseil: Ajoutez une ligne 'Client: NomDuClient' pour que l'historique le détecte !"
+                placeholder="Collez vos données brutes SEO/SEA ici... Exemple: Ajoutez la ligne 'Client: NomDuClient' pour l'extraction automatique !"
               ></textarea>
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2">Ton du message</label>
@@ -226,7 +220,6 @@ export default function Dashboard() {
               </button>
             </div>
           ) : (
-            /* ONGLET LISTE HISTORIQUE */
             <div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-200px)] pr-2">
               {isLoadingHistory ? (
                 <p className="text-sm text-gray-400 text-left">Chargement...</p>
@@ -241,7 +234,6 @@ export default function Dashboard() {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        {/* Affichage bien visible du Nom du Client */}
                         <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                           👤 {item.client_name || 'Unknown'}
                           <button 
