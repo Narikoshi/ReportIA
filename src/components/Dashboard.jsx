@@ -55,6 +55,7 @@ const parseGeneratedText = (text) => {
 export default function Dashboard() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const pdfContentRef = useRef(null); // Ref pour cibler la zone à exporter en PDF
   const [activeTab, setActiveTab] = useState('new');
   const [rawData, setRawData] = useState('');
   const [tone, setTone] = useState('Rassurant');
@@ -146,7 +147,6 @@ export default function Dashboard() {
     }
   };
 
-  // Gestion de l'import de fichier PDF / Excel
   const handleFileImportClick = () => {
     if (!isPremium) {
       setShowUpsellModal(true);
@@ -164,10 +164,7 @@ export default function Dashboard() {
     setRawData('');
 
     try {
-      // On extrait l'extension pour l'envoyer dans les en-têtes
       const fileExtension = file.name.split('.').pop().toLowerCase();
-
-      // Envoi du fichier binaire brut pour simplifier le traitement serverless
       const response = await fetch('/api/parse', {
         method: 'POST',
         headers: {
@@ -180,8 +177,6 @@ export default function Dashboard() {
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erreur lors de l'analyse du fichier");
-
-      // On injecte les données extraites directement dans le textarea
       setRawData(data.text);
     } catch (error) {
       console.error("Erreur d'importation :", error);
@@ -190,6 +185,28 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Logique d'exportation PDF Premium
+  const exportToPDF = () => {
+    if (!isPremium) {
+      setShowUpsellModal(true);
+      return;
+    }
+
+    const element = pdfContentRef.current;
+    const clientName = activeTab === 'history' ? selectedHistoryItem?.client_name : extractClientName(rawData);
+    
+    const options = {
+      margin: 10,
+      filename: `Rapport_Meteo_${clientName || 'Client'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0f172a' }, // Garde le fond bleu nuit stylé
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Déclenche le téléchargement du PDF
+    window.html2pdf().from(element).set(options).save();
   };
 
   const handleEditClientName = async (e, item) => {
@@ -235,37 +252,25 @@ export default function Dashboard() {
       {showUpsellModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 bg-amber-400 text-slate-950 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl">
-              Premium ⭐
-            </div>
-            <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-xl mx-auto mb-4 mt-2">
-              📂
-            </div>
-            <h3 className="text-base font-serif font-bold text-gray-900 mb-2">Import PDF & Excel</h3>
+            <div className="absolute top-0 right-0 bg-amber-400 text-slate-950 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl">Premium ⭐</div>
+            <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-xl mx-auto mb-4 mt-2">🚀</div>
+            <h3 className="text-base font-serif font-bold text-gray-900 mb-2">Débloquez l'accès Pro</h3>
             <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-              Marre des copier-coller ? Déposez directement vos exports **Google Ads (PDF)** ou vos tableaux **Data Looker (Excel)**. Notre IA extrait et analyse tout en 2 secondes.
+              Passez à la vitesse supérieure. Importez vos fichiers (PDF/Excel/CSV) et téléchargez vos comptes rendus en **PDF Marque Blanche** d'un seul clic.
             </p>
             <div className="bg-amber-50 rounded-xl p-4 mb-6 text-left border border-amber-100">
-              <span className="text-xs font-bold text-amber-800 uppercase tracking-wider block mb-1">Inclus dans l'offre Pro :</span>
+              <span className="text-xs font-bold text-amber-800 uppercase tracking-wider block mb-1">Inclus dans le plan Pro :</span>
               <ul className="text-xs text-amber-900 space-y-1.5 list-disc list-inside">
-                <li>Imports PDF & Excel illimités</li>
-                <li>Rapports en Marque Blanche (votre logo)</li>
-                <li>Support prioritaire 24/7</li>
+                <li>Imports de fichiers illimités (PDF, Excel, CSV)</li>
+                <li>Téléchargement des rapports au format PDF cliquable</li>
+                <li>Marque Blanche (Masquage du logo ReportAI)</li>
               </ul>
             </div>
             <div className="flex flex-col gap-2">
-              <button 
-                onClick={() => { alert("Redirection vers Stripe..."); setIsPremium(true); setShowUpsellModal(false); }}
-                className="w-full py-3 text-xs font-bold uppercase tracking-widest text-[#FDFBF7] bg-[#1A1F26] hover:bg-[#C5A880] transition-colors rounded-lg shadow-md"
-              >
-                Passer à l'offre Pro — 19€/mois
+              <button onClick={() => { window.location.href = "https://buy.stripe.com/votre_lien_stripe"; }} className="w-full py-3 text-xs font-bold uppercase tracking-widest text-[#FDFBF7] bg-[#1A1F26] hover:bg-[#C5A880] transition-colors rounded-lg shadow-md">
+                Passer Pro — 19€/mois
               </button>
-              <button 
-                onClick={() => setShowUpsellModal(false)}
-                className="w-full py-2 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                Plus tard
-              </button>
+              <button onClick={() => setShowUpsellModal(false)} className="w-full py-2 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors">Plus tard</button>
             </div>
           </div>
         </div>
@@ -277,9 +282,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 text-center">
             <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-xl mx-auto mb-4">⚠️</div>
             <h3 className="text-base font-serif font-bold text-gray-900 mb-2">Supprimer le rapport</h3>
-            <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-              Êtes-vous sûr de vouloir supprimer définitivement le rapport pour <span className="font-semibold text-gray-800">"{reportToDelete.client_name || 'Unknown'}"</span> ?
-            </p>
+            <p className="text-sm text-gray-500 mb-6 leading-relaxed">Êtes-vous sûr de vouloir supprimer définitivement le rapport pour <span className="font-semibold text-gray-800">"{reportToDelete.client_name || 'Unknown'}"</span> ?</p>
             <div className="flex gap-3 justify-center">
               <button onClick={() => setReportToDelete(null)} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors rounded-lg">Annuler</button>
               <button onClick={confirmDeleteReport} className="px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#FDFBF7] bg-red-500 hover:bg-red-600 transition-colors rounded-lg shadow-sm">Confirmer</button>
@@ -296,26 +299,17 @@ export default function Dashboard() {
             <h1 className="text-sm font-semibold tracking-widest uppercase">ReportAI</h1>
           </div>
           <nav className="space-y-4">
-            <button onClick={() => setActiveTab('new')} className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'new' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}>
-              Nouveau Reporting
-            </button>
-            <button onClick={() => setActiveTab('history')} className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'history' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}>
-              Historique
-            </button>
+            <button onClick={() => setActiveTab('new')} className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'new' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}>Nouveau Reporting</button>
+            <button onClick={() => setActiveTab('history')} className={`block text-left text-xs font-bold uppercase tracking-widest w-full ${activeTab === 'history' ? 'text-[#C5A880]' : 'text-gray-400 hover:text-[#1A1F26]'}`}>Historique</button>
           </nav>
         </div>
         <div>
-          {/* Indicateur visuel du forfait dans la sidebar */}
           <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100 text-left">
             <span className="text-[9px] font-bold text-gray-400 uppercase block">Mon Compte</span>
             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mt-0.5">
-              {isPremium ? '⭐ Plan PRO Active' : '🕊️ Version Gratuite'}
+              {isPremium ? '⭐ Plan PRO Actif' : '🕊️ Version Gratuite'}
             </span>
-            {!isPremium && (
-              <button onClick={() => setShowUpsellModal(true)} className="text-[10px] text-amber-600 font-bold hover:underline mt-1 block">
-                Passer Pro 🚀
-              </button>
-            )}
+            {!isPremium && <button onClick={() => setShowUpsellModal(true)} className="text-[10px] text-amber-600 font-bold hover:underline mt-1 block">Passer Pro 🚀</button>}
           </div>
           <button onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }} className="text-left text-xs font-bold text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors w-full">Se déconnecter</button>
         </div>
@@ -323,46 +317,26 @@ export default function Dashboard() {
 
       {/* MAIN */}
       <div className="flex-1 p-10 flex flex-col">
-        <h2 className="text-2xl font-serif text-[#1A1F26] mb-8 text-left">
-          {activeTab === 'new' ? 'Nouveau Reporting' : 'Mon Historique'}
-        </h2>
+        <h2 className="text-2xl font-serif text-[#1A1F26] mb-8 text-left">{activeTab === 'new' ? 'Nouveau Reporting' : 'Mon Historique'}</h2>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
           {activeTab === 'new' ? (
             <div className="flex flex-col gap-4">
-              
-              {/* ZONE D'IMPORT DE FICHIER (PAYANTE) */}
-              <div 
-                onClick={handleFileImportClick}
-                className="border-2 border-dashed border-gray-200 hover:border-[#C5A880] bg-white rounded-xl p-5 text-center cursor-pointer transition-all relative group overflow-hidden"
-              >
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept=".pdf,.xlsx,.xls,.csv"
-                  className="hidden" 
-                />
+              <div onClick={handleFileImportClick} className="border-2 border-dashed border-gray-200 hover:border-[#C5A880] bg-white rounded-xl p-5 text-center cursor-pointer transition-all relative group overflow-hidden">
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".pdf,.xlsx,.xls,.csv" className="hidden" />
                 <div className="flex items-center justify-center gap-3">
                   <span className="text-xl group-hover:scale-110 transition-transform">📁</span>
                   <div className="text-left">
                     <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      Importer un PDF ou un fichier Excel
+                      Importer un PDF, Excel ou CSV
                       {!isPremium && <span className="text-[9px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded tracking-wider uppercase">Pro 🔒</span>}
                     </p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">
-                      {importedFileName ? `Fichier chargé : ${importedFileName}` : 'Glissez-déposez ou cliquez pour parcourir'}
-                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">{importedFileName ? `Fichier chargé : ${importedFileName}` : 'Glissez-déposez ou cliquez pour parcourir'}</p>
                   </div>
                 </div>
               </div>
 
-              <textarea 
-                value={rawData}
-                onChange={(e) => setRawData(e.target.value)}
-                className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded-xl shadow-sm min-h-[200px]"
-                placeholder="Collez vos données brutes SEO/SEA ici... Ou utilisez l'import de fichier ci-dessus !"
-              ></textarea>
+              <textarea value={rawData} onChange={(e) => setRawData(e.target.value)} className="w-full flex-1 border border-gray-200 bg-white p-4 text-sm focus:outline-none focus:border-[#C5A880] transition-colors resize-none rounded-xl shadow-sm min-h-[200px]" placeholder="Collez vos données brutes SEO/SEA ici... Ou utilisez l'import de fichier ci-dessus !"></textarea>
               
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 uppercase mb-2 text-left">Ton du message</label>
@@ -376,23 +350,12 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-200px)] pr-2">
-              {isLoadingHistory ? (
-                <p className="text-sm text-gray-400 text-left">Chargement...</p>
-              ) : history.length === 0 ? (
-                <p className="text-sm text-gray-400 text-left">Aucun rapport généré.</p>
-              ) : (
+              {isLoadingHistory ? <p className="text-sm text-gray-400 text-left">Chargement...</p> : history.length === 0 ? <p className="text-sm text-gray-400 text-left">Aucun rapport généré.</p> : (
                 history.map((item) => (
-                  <div 
-                    key={item.id}
-                    onClick={() => setSelectedHistoryItem(item)}
-                    className={`p-4 border rounded-xl cursor-pointer transition shadow-sm text-left relative ${selectedHistoryItem?.id === item.id ? 'border-[#C5A880] bg-white' : 'border-gray-200 bg-white hover:border-gray-400'}`}
-                  >
+                  <div key={item.id} onClick={() => setSelectedHistoryItem(item)} className={`p-4 border rounded-xl cursor-pointer transition shadow-sm text-left relative ${selectedHistoryItem?.id === item.id ? 'border-[#C5A880] bg-white' : 'border-gray-200 bg-white hover:border-gray-400'}`}>
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                          👤 {item.client_name || 'Unknown'}
-                          <button onClick={(e) => handleEditClientName(e, item)} className="text-[10px] font-normal text-blue-500 hover:underline bg-blue-50 px-1.5 py-0.5 rounded">Modifier</button>
-                        </h4>
+                        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">👤 {item.client_name || 'Unknown'}<button onClick={(e) => handleEditClientName(e, item)} className="text-[10px] font-normal text-blue-500 hover:underline bg-blue-50 px-1.5 py-0.5 rounded">Modifier</button></h4>
                         <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 mt-1 inline-block">{item.tone}</span>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -407,8 +370,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* RENDU DROITE */}
-          <div className="bg-slate-900 rounded-3xl p-1 shadow-2xl relative w-full h-full">
+          {/* RENDU DROITE (ZONE CAPTURÉE PAR HTML2PDF) */}
+          <div ref={pdfContentRef} className="bg-slate-900 rounded-3xl p-1 shadow-2xl relative w-full h-full">
             {textToParse && (
                 <div className="absolute -top-4 -right-2 bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-900 font-black text-[10px] px-3 py-1.5 rounded-full shadow-lg uppercase tracking-wider z-10">
                     {activeTab === 'new' ? 'Généré par IA ✨' : `Client : ${selectedHistoryItem?.client_name || 'Unknown'} 📁`}
@@ -456,9 +419,15 @@ export default function Dashboard() {
                           </div>
                       </div>
                   </div>
-                  <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-emerald-400 font-medium mt-auto">
+                  <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-emerald-400 font-medium mt-auto gap-2">
                       <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>Zéro Jargon garanti</span>
-                      <button onClick={() => navigator.clipboard.writeText(textToParse)} className="text-slate-300 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors">Copier le message</button>
+                      <div className="flex gap-2">
+                        {/* NOUVEAU BOUTON EXPORT PDF PREMIUM */}
+                        <button onClick={exportToPDF} className="text-slate-900 bg-amber-400 hover:bg-amber-500 font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                          Télécharger en PDF {!isPremium && '🔒'}
+                        </button>
+                        <button onClick={() => navigator.clipboard.writeText(textToParse)} className="text-slate-300 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors">Copier le message</button>
+                      </div>
                   </div>
                 </>
               ) : (
