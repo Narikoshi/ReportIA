@@ -1,10 +1,10 @@
-import { PDFDocument } from 'pdf-lib'; // Alternative légère ou traitement textuel basique
 import * as XLSX from 'xlsx';
+import pdfParse from 'pdf-parse'; // Importation ESM conforme à votre package.json
 
 // Configuration pour permettre à Vercel de recevoir des fichiers volumineux en binaire brut
 export const config = {
   api: {
-    bodyParser: false, // Désactive le parser automatique pour lire le flux binaire
+    bodyParser: false, // Désactive le parser automatique pour lire le flux binaire brut
   },
 };
 
@@ -18,6 +18,7 @@ async function getRawBody(readable) {
 }
 
 export default async function handler(req, res) {
+  // Gestion du CORS pré-vol
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -36,57 +37,41 @@ export default async function handler(req, res) {
 
     let extractedText = '';
 
-    // --- LOGIQUE POUR LES FICHIERS EXCEL (.xlsx, .xls) ---
+    // --- ENCOURS DE TRAITEMENT EXCEL (.xlsx, .xls) ---
     if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       
-      // On parcourt toutes les feuilles du fichier Excel
       workbook.SheetNames.forEach((sheetName) => {
         const worksheet = workbook.Sheets[sheetName];
-        // Conversion de la feuille en texte brut structuré par lignes
         extractedText += `--- Feuille : ${sheetName} ---\n`;
         extractedText += XLSX.utils.sheet_to_txt(worksheet) + '\n\n';
       });
     } 
-    // --- LOGIQUE POUR LES FICHIERS PDF (.pdf) ---
+    // --- ENCOURS DE TRAITEMENT PDF (.pdf) ---
     else if (fileExtension === 'pdf') {
-      // Note : Pour une extraction de texte parfaite et robuste en production sur Vercel,
-      // l'idéal est d'utiliser un paquet dédié comme 'pdf-parse'.
-      // En l'absence de bibliothèque native lourde, on utilise une extraction textuelle via métadonnées XLSX ou un parseur de chaînes :
       try {
-        // Option A : Si vous installez 'pdf-parse' (recommandé), décommenter les lignes suivantes :
-        // const pdfParse = require('pdf-parse');
-        // const data = await pdfParse(buffer);
-        // extractedText = data.text;
-        
-        // Option B (Fallback textuel sécurisé temporaire sans dépendances binaires complexes) :
-        const rawString = buffer.toString('binary');
-        const textMatches = rawString.match(/\/Title\s*\(([^)]+)\)|\/Author\s*\(([^)]+)\)|[\s\S]*?/g);
-        
-        // Pour éviter les blocages, nous allons nettoyer les chaînes de flux PDF basiques :
-        const cleanText = rawString
-          .replace(/[\x00-\x1F\x7F-\x9F]/g, ' ') // Nettoie les caractères de contrôle non-imprimables
-          .replace(/\s+/g, ' ')
-          .substring(0, 3000); // Évite de saturer l'interface au premier test
-          
-        extractedText = `[Texte brut extrait du PDF (Installez pdf-parse pour un rendu optimal)] :\n` + cleanText;
+        // Extraction native, robuste et complète grâce à pdf-parse
+        const data = await pdfParse(buffer);
+        extractedText = data.text;
       } catch (pdfError) {
-        throw new Error("Échec du traitement du fichier PDF. Vérifiez son format.");
+        console.error("Erreur spécifique pdf-parse:", pdfError);
+        throw new Error("Échec du décodage du contenu binaire du PDF.");
       }
     } else {
       return res.status(400).json({ error: 'Format de fichier non supporté. Utilisez un PDF ou un fichier Excel.' });
     }
 
-    if (!extractedText.trim()) {
-      return res.status(422).json({ error: "Aucun texte lisible n'a pu être extrait de ce fichier." });
+    if (!extractedText || !extractedText.trim()) {
+      return res.status(422).json({ error: "Aucun texte lisible n'a pu être extrait de ce document." });
     }
 
+    // Tout s'est bien passé, on renvoie le JSON propre
     return res.status(200).json({ success: true, text: extractedText.trim() });
 
   } catch (error) {
     console.error("Erreur API Parse :", error);
     return res.status(500).json({
-      error: "L'analyseur de fichiers a rencontré une erreur.",
+      error: "L'analyseur de fichiers a rencontré une erreur interne.",
       details: error.message
     });
   }
