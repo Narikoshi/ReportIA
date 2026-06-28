@@ -340,7 +340,7 @@ export default function Dashboard() {
                   type="file" 
                   ref={fileInputRef} 
                   onChange={handleFileChange} 
-                  accept=".pdf,.xlsx,.xls" 
+                  accept=".pdf,.xlsx,.xls,.csv"
                   className="hidden" 
                 />
                 <div className="flex items-center justify-center gap-3">
