@@ -101,7 +101,7 @@ export default function Dashboard() {
       setHistory(data || []);
     } catch (error) {
       console.error(error);
-    } finaly {
+    } finally {
       setIsLoadingHistory(false);
     }
   };
